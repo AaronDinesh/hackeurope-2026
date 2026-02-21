@@ -1,26 +1,29 @@
 export type ThemePreference = 'light' | 'dark' | 'system'
 
+export interface SectionEndpoint {
+  fetch: string
+  regenerate: string
+}
+
 export interface ApiEndpointConfig {
   baseUrl: string
   textInput: string
   voiceInput: string
-  export: string
-  generateFinal: string
-}
-
-export interface MiroAuthTokens {
-  accessToken: string
-  refreshToken: string
-  tokenExpiresAt: number | null
-  defaultBoardId?: string
+  moodBoard: SectionEndpoint
+  storyboard: SectionEndpoint
+  hexCodes: SectionEndpoint
+  constraints: SectionEndpoint
+  summary: SectionEndpoint
+  finalImage: string
+  finalVideo: string
+  download: string
 }
 
 export type MessageRole = 'user' | 'assistant' | 'system'
 
 export interface MessageMetadata {
-  taskType?: 'mood_board' | 'storyboard' | 'final'
-  colorPalette?: Array<{ label: string; hex: string }>
-  boardIds?: string[]
+  referencedSection?: 'mood_board' | 'storyboard' | 'hex_codes' | 'constraints' | 'summary' | 'final'
+  palette?: HexColor[]
 }
 
 export interface Message {
@@ -31,12 +34,56 @@ export interface Message {
   metadata?: MessageMetadata
 }
 
-export interface BoardSummary {
+export interface MoodBoardImage {
   id: string
-  name: string
-  type: 'mood_board' | 'storyboard' | 'output' | 'unknown'
+  imageUrl: string
+  title?: string
+  description?: string
+  promptSnippet?: string
+}
+
+export interface StoryboardScene {
+  id: string
+  imageUrl: string
+  title: string
+  description?: string
+  order: number
+  timestamp?: string
+}
+
+export interface HexColor {
+  id: string
+  name?: string
+  hex: string
+}
+
+export type ConstraintSource = 'user' | 'ai'
+
+export interface Constraint {
+  id: string
+  text: string
+  source: ConstraintSource
+  active: boolean
   createdAt: number
-  thumbnailUrl?: string
+}
+
+export interface SummaryDoc {
+  id: string
+  content: string
+  updatedAt: number
+  source: ConstraintSource
+}
+
+export type FinalOutputType = 'image' | 'video'
+
+export interface FinalOutput {
+  id: string
+  type: FinalOutputType
+  previewUrl: string
+  downloadUrl?: string
+  createdAt: number
+  format: string
+  notes?: string
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
@@ -58,11 +105,17 @@ export interface AppConfigState {
   api: ApiEndpointConfig
   theme: ThemePreference
   hasCompletedOnboarding: boolean
-  miro: MiroAuthTokens | null
 }
 
 export interface VoiceRecordingState {
   isRecording: boolean
   duration: number
   audioBlob: Blob | null
+}
+
+export interface SectionState<T> {
+  data: T
+  isLoading: boolean
+  error: string | null
+  updatedAt: number | null
 }

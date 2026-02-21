@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Miro AI Workspace",
+  "productName": "Gemini Creative Studio",
   "version": "0.1.0",
   "identifier": "com.opencodedev.miroaiworkspace",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Miro AI Workspace",
+        "title": "Gemini Creative Studio",
         "width": 1280,
         "height": 832,
         "minWidth": 1080,

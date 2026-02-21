@@ -1,73 +1,70 @@
-# React + TypeScript + Vite
+# Gemini Creative Studio – UI Setup Guide
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository houses the desktop UI (Tauri + React + TypeScript) for the Gemini Creative Studio. Follow the instructions below to install the required tooling and run the application on Windows, macOS, or Linux.
 
-Currently, two official plugins are available:
+## 1. Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### All Platforms
+- **Node.js** 20.x (includes npm). Download from [nodejs.org](https://nodejs.org/) or use a version manager.
+- **Rust toolchain** (stable). Install via [rustup](https://rustup.rs/).
+- **Tauri CLI** (installed automatically via `npm install` script – no extra steps needed after prerequisites).
 
-## React Compiler
+### Windows
+1. Install **Visual Studio Build Tools** (at least C++ workload) or the full Visual Studio 2022 Community edition.
+2. Install the **Windows 10/11 SDK**.
+3. Ensure **Microsoft C++ Build Tools** and **WebView2** are present (WebView2 usually ships with Windows; if not, get it from the [Microsoft download page](https://developer.microsoft.com/microsoft-edge/webview2/)).
+4. After installing prerequisites, open a new **Developer PowerShell** or **Terminal** so the environment picks up new PATH entries.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### macOS
+1. Install **Xcode** or at least the **Command Line Tools** via `xcode-select --install`.
+2. Ensure **Homebrew** is available (optional but convenient for dependencies).
+3. WebKit (the system WebView) is already available, so no extra steps.
 
-## Expanding the ESLint configuration
+### Linux
+1. Install development packages for your distribution:
+   - **Debian/Ubuntu**: `sudo apt update && sudo apt install build-essential libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev`.
+   - **Fedora**: `sudo dnf install @development-tools webkit2gtk4.1-devel libappindicator-gtk3 librsvg2-devel`.
+   - **Arch**: `sudo pacman -S --needed base-devel webkit2gtk-4.1 libappindicator-gtk3 librsvg`.
+2. Ensure `pkg-config` is installed (usually part of the base dev tools).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 2. Repository Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone <repo-url>
+cd hackeurope-2026
+npm install        # installs frontend deps + tauri CLI
+cp .env.example .env   # edit endpoints later
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 3. Running the App
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Development Mode
+```bash
+npm run tauri dev
 ```
+This launches the Vite dev server and Tauri dev window. Any code change in `src/` hot-reloads the UI.
+
+### Production Build
+```bash
+npm run tauri build
+```
+Tauri produces a platform-specific bundle under `src-tauri/target/{debug|release}` and, if bundling is enabled, installers inside `src-tauri/target/release/bundle`.
+
+## 4. Environment Configuration
+
+Edit the `.env` (copied from `.env.example`) to match your FastAPI backend. By default it provides a `VITE_API_BASE_URL`. All other endpoints can be configured inside the settings modal of the app once it is running.
+
+## 5. Troubleshooting
+- **Missing toolchain errors**: confirm Rust, Node, and platform dev packages are installed, then reopen your terminal.
+- **`tauri: command not found`**: rerun `npm install` to ensure the CLI dependency is available.
+- **WebView issues on Linux**: confirm the correct `webkit2gtk` version (4.1+) is installed.
+
+## 6. Helpful Commands
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Vite-only preview in a browser (without Tauri shell). |
+| `npm run tauri dev` | Full desktop dev mode with native shell. |
+| `npm run tauri build` | Production build + installer generation. |
+| `npm run lint` | Run ESLint. |
+
+You’re ready to extend the UI per `REQUIREMENTS.md` and `IMPLEMENTATION_PLAN.md`. Reach out to the backend team for the latest FastAPI endpoints and credentials before testing Gemini flows.
