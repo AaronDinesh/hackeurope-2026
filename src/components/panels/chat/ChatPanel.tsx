@@ -78,7 +78,7 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
         </div>
         <div className="flex gap-2">
           <textarea
-            className="h-24 flex-1 resize-none rounded-2xl border border-border bg-muted/30 p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent"
+            className="h-24 flex-1 resize-none rounded-2xl border border-border/60 bg-[#0c1324] p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent"
             placeholder="Describe what you want Gemini to create…"
             value={input}
             onChange={(event) => setInput(event.target.value)}
