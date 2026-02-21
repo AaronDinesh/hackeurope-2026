@@ -15,8 +15,9 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
   const addConstraint = useContentStore((s) => s.addConstraint)
   const updateConstraint = useContentStore((s) => s.updateConstraint)
   const removeConstraint = useContentStore((s) => s.removeConstraint)
+  const setSectionData = useContentStore((s) => s.setSectionData)
   const addToast = useToastStore((s) => s.addToast)
-  const [dialog, setDialog] = useState<{ mode: 'create' | 'edit'; constraint?: Constraint } | null>(null)
+  const [dialog, setDialog] = useState<{ mode: 'create' | 'edit' | 'regenerate'; constraint?: Constraint } | null>(null)
 
   return (
     <div className="rounded-3xl border border-border bg-muted/20 p-5 shadow-sm">
@@ -36,6 +37,13 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
             onClick={() => setDialog({ mode: 'create' })}
           >
             Add
+          </button>
+          <button
+            type="button"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+            onClick={() => setDialog({ mode: 'regenerate' })}
+          >
+            Suggest
           </button>
         </div>
         {state.updatedAt ? (
@@ -90,8 +98,14 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
         <p className="text-sm text-muted-foreground">No constraints yet.</p>
       )}
       <PromptDialog
-        title={dialog?.mode === 'edit' ? 'Edit Constraint' : 'Add Constraint'}
-        confirmLabel={dialog?.mode === 'edit' ? 'Save' : 'Add'}
+        title={
+          dialog?.mode === 'edit'
+            ? 'Edit Constraint'
+            : dialog?.mode === 'regenerate'
+              ? 'Regenerate Constraints'
+              : 'Add Constraint'
+        }
+        confirmLabel={dialog?.mode === 'edit' ? 'Save' : dialog?.mode === 'regenerate' ? 'Generate' : 'Add'}
         isOpen={dialog !== null}
         initialValue={dialog?.constraint?.text ?? ''}
         onClose={() => setDialog(null)}
@@ -101,6 +115,10 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
               const updated = await apiClient.updateConstraint(dialog.constraint.id, { text })
               updateConstraint(updated)
               addToast({ type: 'success', message: 'Constraint updated' })
+            } else if (dialog?.mode === 'regenerate') {
+              const regenerated = await apiClient.regenerateConstraints({ prompt: text })
+              setSectionData('constraints', regenerated)
+              addToast({ type: 'success', message: 'Constraints regenerated' })
             } else {
               const created = await apiClient.createConstraint(text)
               addConstraint(created)

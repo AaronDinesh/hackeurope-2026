@@ -54,7 +54,7 @@ export function AppLayout({ onOpenSettings }: AppLayoutProps) {
         </div>
       </div>
       <div className="flex w-[32%] min-w-[360px] max-w-md flex-col bg-background">
-        <ChatPanel focusTab={setActiveTab} />
+        <ChatPanel focusTab={setActiveTab} onOpenSettings={onOpenSettings} />
       </div>
     </div>
   )

@@ -7,9 +7,10 @@ interface AppStore {
   setTheme: (theme: ThemePreference) => void
   updateApiEndpoints: (updater: Partial<ApiEndpointConfig>) => void
   markOnboardingComplete: () => void
+  resetConfig: () => void
 }
 
-const defaultConfig: AppConfigState = {
+export const defaultAppConfig: AppConfigState = {
   api: {
     baseUrl: 'http://localhost:8000',
     textInput: '/input',
@@ -36,7 +37,7 @@ const defaultConfig: AppConfigState = {
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      config: defaultConfig,
+      config: defaultAppConfig,
       setTheme: (theme) =>
         set((state) => ({
           config: { ...state.config, theme },
@@ -49,6 +50,7 @@ export const useAppStore = create<AppStore>()(
         set((state) => ({
           config: { ...state.config, hasCompletedOnboarding: true },
         })),
+      resetConfig: () => set({ config: defaultAppConfig }),
     }),
     {
       name: 'app-config',

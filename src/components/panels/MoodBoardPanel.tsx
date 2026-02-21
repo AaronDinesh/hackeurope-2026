@@ -10,6 +10,7 @@ export function MoodBoardPanel() {
   const setSectionData = useContentStore((state) => state.setSectionData)
   const addToast = useToastStore((state) => state.addToast)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
 
   return (
     <div className="flex h-full flex-col">
@@ -46,7 +47,14 @@ export function MoodBoardPanel() {
       ) : moodBoard.data.length ? (
         <div className="grid flex-1 grid-cols-2 gap-4 p-6 lg:grid-cols-3">
           {moodBoard.data.map((image) => (
-            <figure key={image.id} className="rounded-2xl border border-border/70 bg-muted/40 shadow-sm">
+            <figure
+              key={image.id}
+              className="cursor-pointer rounded-2xl border border-border/70 bg-muted/40 shadow-sm transition hover:-translate-y-1"
+              onClick={() => {
+                setSelectedImageId(image.id)
+                setRegenerateOpen(true)
+              }}
+            >
               <div className="aspect-square overflow-hidden rounded-t-2xl bg-muted">
                 <img src={image.imageUrl} alt={image.title || 'Mood board'} className="h-full w-full object-cover" />
               </div>
@@ -63,16 +71,22 @@ export function MoodBoardPanel() {
         <Placeholder message="No mood board images yet." />
       )}
       <PromptDialog
-        title="Regenerate Mood Board"
+        title={selectedImageId ? 'Update Mood Tile' : 'Regenerate Mood Board'}
         isOpen={regenerateOpen}
-        onClose={() => setRegenerateOpen(false)}
+        onClose={() => {
+          setRegenerateOpen(false)
+          setSelectedImageId(null)
+        }}
         onSubmit={async (prompt) => {
           try {
-            const images = await apiClient.regenerateMoodBoard(prompt)
+            const images = await apiClient.regenerateMoodBoard(prompt, selectedImageId ?? undefined)
             setSectionData('moodBoard', images)
             addToast({ type: 'success', message: 'Mood board updated' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })
+          } finally {
+            setSelectedImageId(null)
+            setRegenerateOpen(false)
           }
         }}
       />

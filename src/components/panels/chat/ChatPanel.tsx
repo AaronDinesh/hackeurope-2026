@@ -7,17 +7,39 @@ import { apiClient } from '../../../services/api'
 import type { TabId } from '../../layout/AppLayout'
 import { MessageList } from './MessageList'
 import { VoiceRecorderButton } from './VoiceRecorderButton'
+import { TextArea } from '../../ui/TextArea'
 
 interface ChatPanelProps {
   focusTab: (tab: TabId) => void
+  onOpenSettings?: () => void
 }
 
-export function ChatPanel({ focusTab }: ChatPanelProps) {
+export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const { messages, addMessage, updateMessage, isLoading, setLoading } = useChatStore()
   const addFinalOutput = useContentStore((state) => state.addFinalOutput)
+  const setSectionData = useContentStore((state) => state.setSectionData)
   const addToast = useToastStore((state) => state.addToast)
   const { isStreaming, sendStreamingMessage } = useStreamingResponse()
+
+  const refreshAllSections = async () => {
+    try {
+      const [mood, story, hex, constraintList, summaryDoc] = await Promise.all([
+        apiClient.fetchMoodBoard(),
+        apiClient.fetchStoryboard(),
+        apiClient.fetchHexCodes(),
+        apiClient.fetchConstraints(),
+        apiClient.fetchSummary(),
+      ])
+      setSectionData('moodBoard', mood)
+      setSectionData('storyboard', story)
+      setSectionData('hexCodes', hex)
+      setSectionData('constraints', constraintList)
+      setSectionData('summary', summaryDoc)
+    } catch (error) {
+      addToast({ type: 'error', message: (error as Error).message ?? 'Failed to refresh sections' })
+    }
+  }
 
   const handleSend = async () => {
     const content = input.trim()
@@ -32,6 +54,7 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
         buffer += chunk
         updateMessage(assistantMessage.id, { content: buffer })
       })
+      await refreshAllSections()
     } catch (error) {
       console.error(error)
       updateMessage(assistantMessage.id, { content: 'Something went wrong. Please try again.' })
@@ -57,6 +80,7 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
           ? await apiClient.generateFinalImage(context)
           : await apiClient.generateFinalVideo(context)
       addFinalOutput(output)
+      await refreshAllSections()
       addToast({ type: 'success', message: `Final ${type} ready` })
       focusTab('final')
     } catch (error) {
@@ -70,10 +94,17 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border px-6 py-5">
-        <div className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-          Conversation
-        </div>
+      <header className="flex items-center justify-between border-b border-border px-6 py-5">
+        <div className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Conversation</div>
+        {onOpenSettings ? (
+          <button
+            type="button"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+            onClick={onOpenSettings}
+          >
+            Settings
+          </button>
+        ) : null}
       </header>
       <div className="flex-1 overflow-y-auto px-6">
         <MessageList messages={messages} focusTab={focusTab} />
@@ -84,8 +115,8 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
           <span>{isStreaming ? 'Streaming response…' : 'Ready'}</span>
         </div>
         <div className="flex gap-2">
-          <textarea
-            className="h-24 flex-1 resize-none rounded-2xl border border-border/60 bg-[#0c1324] p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent"
+          <TextArea
+            className="h-24 flex-1 resize-none"
             placeholder="Describe what you want Gemini to create…"
             value={input}
             onChange={(event) => setInput(event.target.value)}

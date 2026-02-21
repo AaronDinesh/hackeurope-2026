@@ -1,6 +1,10 @@
 import { useAppStore } from '../../stores/app'
 
-export function WelcomeScreen() {
+interface WelcomeScreenProps {
+  onOpenSettings: () => void
+}
+
+export function WelcomeScreen({ onOpenSettings }: WelcomeScreenProps) {
   const markComplete = useAppStore((state) => state.markOnboardingComplete)
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
@@ -21,10 +25,7 @@ export function WelcomeScreen() {
         >
           Open Settings
         </button>
-        <button
-          className="rounded-full border border-border px-6 py-3 text-sm font-semibold"
-          onClick={markComplete}
-        >
+        <button className="rounded-full border border-border px-6 py-3 text-sm font-semibold" onClick={markComplete}>
           Skip for now
         </button>
       </div>

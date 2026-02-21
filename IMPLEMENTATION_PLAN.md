@@ -1,98 +1,38 @@
-# Implementation Plan
+# Remaining Implementation Plan
 
-This plan turns the refreshed requirements into actionable engineering steps. Each section lists tasks, dependencies, and deliverables for the Gemini Creative Studio desktop app.
+This document now tracks only the outstanding work required to finish the Gemini Creative Studio desktop app.
 
-## 1. Tooling & Project Setup
-1. (Already done) Tauri + React + TypeScript + Tailwind scaffold. Ensure the following dependencies stay up to date:
-   - Runtime: `@tauri-apps/api`, `@tauri-apps/plugin-window-state`, `@tauri-apps/plugin-shell`, `react`, `react-dom`, `zustand`, `ky`, `lucide-react`, `clsx`.
-   - Dev: `@tauri-apps/cli`, `typescript`, `vite`, `@vitejs/plugin-react`, `tailwindcss`, `postcss`, `autoprefixer`.
-2. Tailwind + CSS variables already configured; extend as needed when new components arrive.
-3. `tauri.conf.json` already updated for window defaults; ensure plugins remain loaded.
+## 1. Backend Orchestration & Data Flow
+1. **Starter element orchestration** – when a user submits a prompt, listen for the backend signal (response metadata, SSE, or polling) that the five starter sections are ready. Invoke the section fetch endpoints in order (mood board, storyboard, hex codes, constraints, summary) and surface loading/progress states while they hydrate.
+2. **Section refresh contract** – confirm with the FastAPI backend whether regenerate endpoints return full lists or only patches (per tile/scene). Adjust `content` store updates accordingly and ensure timestamps/metadata stay in sync.
+3. **Final generation payload** – lock in the exact payload structure expected by `/generate-final-image` and `/generate-final-video` (IDs, prompts, etc.), and ensure loading/toast states reflect backend status.
 
-## 2. Type Definitions & State Stores
-1. Expand `src/types/index.ts` to cover:
-   - AppConfig (endpoints, theme, onboarding flag)
-   - Message + metadata
-   - MoodBoardImage, StoryboardScene, HexColor, Constraint, SummaryDoc
-   - FinalOutput (type, preview URL/path, createdAt)
-2. Zustand stores with persistence:
-   - `app.ts`: base URL + endpoint overrides, theme preference, onboarding flag.
-   - `chat.ts`: messages, streaming state, helper methods.
-   - `content.ts` (new): mood board, storyboard, hex codes, constraints, summary, final output history, loading/error flags per section.
-   - `toast.ts`: toast queue.
-3. Optional: `constraints.ts` if constraint CRUD logic becomes complex (IDs, statuses, provenance).
+## 2. Section Editing Enhancements
+1. **Mood board & storyboard editing** – extend the new per-item dialogs so users can rename titles/descriptions, reorder items, or replace images while keeping metadata intact. Persist those edits via new backend endpoints if available.
+2. **Hex palette utilities** – add copy-to-clipboard, rename, and delete controls per swatch. Wire “suggest palette” prompts to show which colors changed.
+3. **Constraints CRUD polish** – add validation (non-empty text, duplicates), better optimistic updates (revert on failure), and visual cues for disabled constraints. Support bulk imports if backend exposes that option.
 
-## 3. Services Layer
-1. `src/services/api.ts`
-   - Build URL helper that reads config store.
-   - Methods for: `sendMessage`, `sendVoice`, `fetchMoodBoard`, `generateMoodBoard`, same for storyboard/hex/constraints/summary, `generateFinalImage`, `generateFinalVideo`, `downloadFile`.
-   - Ensure every method throws descriptive errors consumed by toast system.
-2. Remove Miro/OAuth services; all calls go to FastAPI.
+## 3. Settings & Onboarding Polish
+1. **Validation** – enforce proper URL format for base URL and ensure endpoint paths start with `/`. Inline errors should prevent saving.
+2. **Persistence UX** – disable the “Skip for now” button (or warn) until settings have been saved at least once. Add a confirmation toast after saving.
+3. **Reset/Presets** – allow resetting to default endpoints and exporting/importing a JSON settings profile.
 
-## 4. Hooks
-1. `useSystemTheme`, `useVoiceRecorder`, `useStreamingResponse`, `useNetworkStatus` (already created).
-2. Add `useSectionLoader(sectionKey, fetcher)` to orchestrate initial load + refresh for mood/story/text panels.
-3. Add `useDownloadFile` hook to save blobs via Tauri dialog/fs when final outputs are downloaded.
+## 4. Downloads & File Management
+1. **Tauri-native downloads** – finish integrating the `saveBlobFile` helper with the Tauri dialog/fs APIs (already scaffolded) and add an “Open containing folder” action per final output once a file is saved.
+2. **History metadata** – store file paths, checksums, and statuses (saved/not saved) inside the final output entries so the UI can reflect whether a user has downloaded each asset.
 
-## 5. UI Structure
-1. `src/App.tsx`
-   - Keep placeholder until real components ready; eventually render `WelcomeScreen` (if onboarding incomplete) else `AppShell` containing layout.
-2. `components/Layout`
-   - Left: `ContentTabs` (mood/story/text/final) with corresponding panels.
-   - Right: `ChatPanel` (MessageList + ChatInput + VoiceRecorder + GenerateButtons + loaders).
-3. `components/ContentTabs`
-   - Manage tab state; highlight referenced section when chat messages reference them.
-4. `components/MoodBoardPanel`
-   - Grid of images with enlarge modal, refresh button, edit trigger.
-5. `components/StoryboardPanel`
-   - Ordered list of images with captions/time markers; edit per scene.
-6. `components/TextPanel`
-   - `HexCodesPanel`: swatches, copy-to-clipboard, refresh.
-   - `ConstraintsPanel`: CRUD UI with tag chips, edit modal, toggle for AI vs user created.
-   - `SummaryPanel`: display formatted text/markdown with edit/regenerate controls.
-7. `components/FinalOutputPanel`
-   - History list with preview cards, metadata, download/locate buttons.
-8. `components/ChatPanel`
-   - `MessageList`, `LoadingIndicator`, `VoiceRecorder`, `ChatInput`, `GenerateButtons` (image/video), `SectionReferenceBadge` if message links to a tab.
-9. `components/ElementEditor`
-   - Modal or sidebar overlay triggered when user clicks “edit/regenerate” on a section; exposes text box + “Generate” button hitting the correct endpoint.
-10. Supporting components: `SettingsModal`, `ThemeToggle`, `ToastContainer`, `OfflineBanner`, `WelcomeScreen`, `EmptyStateCard` for each section.
+## 5. Backend Wiring & Error Handling
+1. **API error surface** – map backend error codes/messages to user-friendly toasts and inline section errors. Include retry tokens for transient issues.
+2. **Streaming metadata** – if the backend can send section references in chat responses, populate `Message.metadata.referencedSection` so the “View section” shortcuts work end-to-end.
+3. **Voice transcription** – display success/failure states based on the `/voice_input` response and allow re-uploading if the backend rejects the audio.
 
-## 6. Behavior Wiring
-1. Initial prompt flow: user submits via chat → call `/input` (stream) → once backend responds that sections are ready, trigger fetch for each section or rely on response payload (depending on API contract).
-2. Section refresh: clicking refresh or editing a section calls its generate endpoint, shows inline loader, updates store when response returns.
-3. Constraints CRUD: add/edit/delete call relevant endpoints, update store optimistically, show toast on failure.
-4. Voice recording: record → `/voice_input` → insert transcript into chat input (user manually sends).
-5. Final generation buttons: gather latest section IDs/metadata if required, call `generateFinalImage` or `generateFinalVideo`, append result to final output history, show toast on success/failure.
-6. Download: request signed URL or Blob via `downloadFile`, prompt user for save location using Tauri dialog/fs.
-7. Offline handling: disable send/generate buttons while offline and show informative banner.
+## 6. Testing & QA
+1. **Manual test pass** – run `npm run tauri dev` after the backend is wired up, covering: onboarding, chat + voice, section fetch/regenerate flows, constraint CRUD, final generation + download, offline mode, and theme toggling.
+2. **Edge cases** – test large file downloads, extremely long prompts, simultaneous regenerations, and backend error scenarios.
+3. **Optional automated tests** – once contracts solidify, add Jest/Vitest tests for stores (content/chat) and key helpers (e.g., `saveBlobFile`).
 
-## 7. Styling & Themes
-1. Continue using CSS variables + Tailwind classes; extend palette for section cards, constraint badges, etc.
-2. Provide responsive breakpoints (min width 1080 but allow shrink); ensure tabs wrap sensibly.
-3. Use Lucide icons for actions (refresh, edit, download, etc.).
+## 7. Deployment Tasks
+1. **Docs** – update `README.md` with finalized endpoint descriptions and troubleshooting notes for the backend integration.
+2. **Packaging** – when ready, run `npm run tauri build` for Windows/macOS/Linux, smoke-test installers, and document installation steps.
 
-## 8. Testing & Validation
-1. Manual QA checklist:
-   - Welcome → settings configuration → ready state.
-   - Chat streaming + voice transcription + editing.
-   - Each tab shows loading/empty/filled states; editing/regenerating works.
-   - Constraint CRUD updates backend + UI.
-   - Final image/video generation populates history; downloads succeed.
-   - Theme toggle, offline indicator, toasts.
-   - Window state + local persistence survive app restart.
-2. Optional automated tests using Vitest/RTL for reducers and key components (chat store, constraint editor, final output history).
-
-## 9. Outstanding Questions / TODO Hooks
-- Final API contract for each section (URLs, payloads, push vs pull) to be confirmed with backend.
-- Determine download mechanism (direct URL vs binary stream) to finalize `downloadFile` implementation.
-- Define metadata schema for final outputs (file paths, preview images, etc.).
-- Provide example `.env` for endpoint overrides once backend finalizes naming.
-
-## 10. Deliverables
-- Updated `REQUIREMENTS.md` (done) and this plan.
-- Full React/Tauri implementation with tabbed layout, chat, voice, constraint manager, final output history.
-- Documentation (`README.md`) describing configuration, endpoints, and build/run steps.
-- Optional packaging scripts/instructions for distributing the Tauri app.
-
-Follow this plan sequentially or in parallel tasks. Prioritize stores/services first, then UI skeleton, then behavior wiring, and finally polish (toasts, error states, downloads).
+Complete these items to finish the remaining roadmap. Prioritize backend contract confirmation and section orchestration before polishing UI layers.

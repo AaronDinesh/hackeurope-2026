@@ -2,13 +2,31 @@ import type { SectionState, SummaryDoc } from '../../types'
 
 interface SummaryProps {
   state: SectionState<SummaryDoc | null>
+  onRefresh: () => void
+  onRegenerate: () => void
 }
 
-export function SummaryCard({ state }: SummaryProps) {
+export function SummaryCard({ state, onRefresh, onRegenerate }: SummaryProps) {
   return (
     <div className="flex flex-1 flex-col rounded-3xl border border-border bg-muted/10 p-6 shadow-inner">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Summary</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+            onClick={onRefresh}
+          >
+            Refresh
+          </button>
+          <button
+            type="button"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+            onClick={onRegenerate}
+          >
+            Regenerate
+          </button>
+        </div>
         {state.updatedAt ? (
           <span className="text-xs text-muted-foreground">
             Updated {new Date(state.updatedAt).toLocaleTimeString()}

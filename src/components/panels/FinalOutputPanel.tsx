@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { useContentStore } from '../../stores/content'
+import { useToastStore } from '../../stores/toast'
+import { apiClient } from '../../services/api'
+import { saveBlobFile } from '../../utils/saveFile'
 
 export function FinalOutputPanel() {
   const outputs = useContentStore((state) => state.finalOutputs)
+  const addToast = useToastStore((state) => state.addToast)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   if (!outputs.length) {
     return <Placeholder message="No final outputs yet." />
@@ -34,12 +40,11 @@ export function FinalOutputPanel() {
                 try {
                   setDownloadingId(output.id)
                   const blob = await apiClient.downloadFinalAsset({ id: output.id })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = output.type === 'image' ? 'final-image' : 'final-video'
-                  a.click()
-                  URL.revokeObjectURL(url)
+                  await saveBlobFile(
+                    blob,
+                    `${output.type === 'image' ? 'final-image' : 'final-video'}-${output.id}.${output.format ?? 'bin'}`,
+                  )
+                  addToast({ type: 'success', message: 'Download complete' })
                 } catch (error) {
                   addToast({ type: 'error', message: (error as Error).message ?? 'Download failed' })
                 } finally {

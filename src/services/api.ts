@@ -82,11 +82,11 @@ export const apiClient = {
     return requestJson<MoodBoardImage[]>(buildUrl(getApiUrl().moodBoard.fetch))
   },
 
-  async regenerateMoodBoard(prompt: string) {
+  async regenerateMoodBoard(prompt: string, targetId?: string) {
     return requestJson<MoodBoardImage[]>(buildUrl(getApiUrl().moodBoard.regenerate), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, targetId }),
     })
   },
 
@@ -94,11 +94,11 @@ export const apiClient = {
     return requestJson<StoryboardScene[]>(buildUrl(getApiUrl().storyboard.fetch))
   },
 
-  async regenerateStoryboard(prompt: string) {
+  async regenerateStoryboard(prompt: string, targetId?: string) {
     return requestJson<StoryboardScene[]>(buildUrl(getApiUrl().storyboard.regenerate), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, targetId }),
     })
   },
 

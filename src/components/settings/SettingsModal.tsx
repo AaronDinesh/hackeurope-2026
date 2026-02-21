@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ApiEndpointConfig } from '../../types'
 import { useAppStore } from '../../stores/app'
+import { useChatStore } from '../../stores/chat'
+import { useContentStore } from '../../stores/content'
 import { TextField } from '../ui/TextField'
 
 interface SettingsModalProps {
@@ -11,6 +13,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const config = useAppStore((state) => state.config)
   const updateApiEndpoints = useAppStore((state) => state.updateApiEndpoints)
   const markOnboardingComplete = useAppStore((state) => state.markOnboardingComplete)
+  const resetConfig = useAppStore((state) => state.resetConfig)
+  const clearChat = useChatStore((state) => state.clearHistory)
+  const clearContent = useContentStore((state) => state.clearContent)
   const [form, setForm] = useState<ApiEndpointConfig>(config.api)
 
   const handleChange = (path: string, value: string) => {
@@ -26,9 +31,25 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     })
   }
 
+  const isValid = form.baseUrl.trim().length > 0
+
   const handleSave = () => {
+    if (!isValid) return
     updateApiEndpoints(form)
     markOnboardingComplete()
+    onClose()
+  }
+
+  const handleReset = () => {
+    setForm(config.api)
+  }
+
+  const handleClearWorkspace = () => {
+    const confirmClear = window.confirm('This will reset all local data and settings. Continue?')
+    if (!confirmClear) return
+    resetConfig()
+    clearChat()
+    clearContent()
     onClose()
   }
 
@@ -99,11 +120,23 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <Field label="Download Endpoint" value={form.download} onChange={(value) => handleChange('download', value)} />
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-3">
+            <button className="rounded-full border border-border px-4 py-2 text-sm" onClick={handleReset}>
+              Reset Form
+            </button>
+            <button className="rounded-full border border-danger/60 px-4 py-2 text-sm text-danger" onClick={handleClearWorkspace}>
+              Clear Workspace
+            </button>
+          </div>
           <button className="rounded-full border border-border px-4 py-2 text-sm" onClick={onClose}>
             Cancel
           </button>
-          <button className="rounded-full bg-foreground px-6 py-2 text-sm font-semibold text-background" onClick={handleSave}>
+          <button
+            className="rounded-full bg-foreground px-6 py-2 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:bg-muted"
+            onClick={handleSave}
+            disabled={!isValid}
+          >
             Save & Continue
           </button>
         </div>

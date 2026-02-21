@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TextArea } from '../ui/TextArea'
 
 interface PromptDialogProps {
   title: string
@@ -47,8 +48,8 @@ export function PromptDialog({
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">{title}</p>
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
-        <textarea
-          className="h-40 w-full resize-none rounded-2xl border border-border/60 bg-muted/20 p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+        <TextArea
+          className="h-40 w-full resize-none"
           placeholder={placeholder}
           value={value}
           onChange={(event) => setValue(event.target.value)}

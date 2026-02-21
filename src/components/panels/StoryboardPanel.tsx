@@ -10,6 +10,7 @@ export function StoryboardPanel() {
   const addToast = useToastStore((state) => state.addToast)
   const setSectionData = useContentStore((state) => state.setSectionData)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
+  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null)
 
   return (
     <div className="flex h-full flex-col">
@@ -49,7 +50,14 @@ export function StoryboardPanel() {
             .slice()
             .sort((a, b) => a.order - b.order)
             .map((scene) => (
-              <div key={scene.id} className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div
+                key={scene.id}
+                className="flex cursor-pointer flex-col gap-3 rounded-2xl border border-border/70 bg-muted/30 p-4 transition hover:-translate-y-1"
+                onClick={() => {
+                  setSelectedSceneId(scene.id)
+                  setRegenerateOpen(true)
+                }}
+              >
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">Scene {scene.order}</span>
                   {scene.timestamp ? <span>{scene.timestamp}</span> : null}
@@ -70,16 +78,22 @@ export function StoryboardPanel() {
         <Placeholder message="Storyboard is empty." />
       )}
       <PromptDialog
-        title="Regenerate Storyboard"
+        title={selectedSceneId ? 'Update Scene' : 'Regenerate Storyboard'}
         isOpen={regenerateOpen}
-        onClose={() => setRegenerateOpen(false)}
+        onClose={() => {
+          setRegenerateOpen(false)
+          setSelectedSceneId(null)
+        }}
         onSubmit={async (prompt) => {
           try {
-            const scenes = await apiClient.regenerateStoryboard(prompt)
+            const scenes = await apiClient.regenerateStoryboard(prompt, selectedSceneId ?? undefined)
             setSectionData('storyboard', scenes)
             addToast({ type: 'success', message: 'Storyboard updated' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })
+          } finally {
+            setSelectedSceneId(null)
+            setRegenerateOpen(false)
           }
         }}
       />
