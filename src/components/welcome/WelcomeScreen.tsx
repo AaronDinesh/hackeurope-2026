@@ -15,7 +15,10 @@ export function WelcomeScreen() {
         </p>
       </div>
       <div className="flex gap-3">
-        <button className="rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background">
+        <button
+          className="rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background"
+          onClick={onOpenSettings}
+        >
           Open Settings
         </button>
         <button

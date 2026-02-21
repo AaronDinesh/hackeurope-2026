@@ -26,8 +26,28 @@ export function FinalOutputPanel() {
           </div>
           {output.notes ? <p className="text-sm text-muted-foreground">{output.notes}</p> : null}
           <div className="flex flex-wrap gap-3">
-            <button type="button" className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background">
-              Download
+            <button
+              type="button"
+              className="rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background"
+              disabled={downloadingId === output.id}
+              onClick={async () => {
+                try {
+                  setDownloadingId(output.id)
+                  const blob = await apiClient.downloadFinalAsset({ id: output.id })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = output.type === 'image' ? 'final-image' : 'final-video'
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch (error) {
+                  addToast({ type: 'error', message: (error as Error).message ?? 'Download failed' })
+                } finally {
+                  setDownloadingId(null)
+                }
+              }}
+            >
+              {downloadingId === output.id ? 'Preparing…' : 'Download'}
             </button>
           </div>
         </article>

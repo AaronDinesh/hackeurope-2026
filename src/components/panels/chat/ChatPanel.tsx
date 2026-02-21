@@ -42,13 +42,20 @@ export function ChatPanel({ focusTab }: ChatPanelProps) {
   }
 
   const handleGenerate = async (type: 'image' | 'video') => {
+    const snapshot = useContentStore.getState()
+    const context = {
+      moodBoard: snapshot.moodBoard.data,
+      storyboard: snapshot.storyboard.data,
+      hexCodes: snapshot.hexCodes.data,
+      constraints: snapshot.constraints.data,
+      summary: snapshot.summary.data,
+    }
     try {
       setLoading(true, `Generating final ${type}`)
-      const payload = {}
       const output =
         type === 'image'
-          ? await apiClient.generateFinalImage(payload)
-          : await apiClient.generateFinalVideo(payload)
+          ? await apiClient.generateFinalImage(context)
+          : await apiClient.generateFinalVideo(context)
       addFinalOutput(output)
       addToast({ type: 'success', message: `Final ${type} ready` })
       focusTab('final')

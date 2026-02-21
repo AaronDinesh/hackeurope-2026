@@ -3,13 +3,21 @@ import { clsx } from 'clsx'
 
 export interface ConstraintsPanelProps {
   state: SectionState<Constraint[]>
+  onRefresh: () => void
 }
 
-export function ConstraintsPanel({ state }: ConstraintsPanelProps) {
+export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
   return (
     <div className="rounded-3xl border border-border bg-muted/20 p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Constraints</p>
+        <button
+          type="button"
+          className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+          onClick={onRefresh}
+        >
+          Refresh
+        </button>
         {state.updatedAt ? (
           <span className="text-xs text-muted-foreground">
             Updated {new Date(state.updatedAt).toLocaleTimeString()}

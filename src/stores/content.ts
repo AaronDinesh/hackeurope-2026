@@ -10,7 +10,7 @@ import type {
   SummaryDoc,
 } from '../types'
 
-type SectionKey = 'moodBoard' | 'storyboard' | 'hexCodes' | 'constraints' | 'summary'
+export type SectionKey = 'moodBoard' | 'storyboard' | 'hexCodes' | 'constraints' | 'summary'
 
 type SectionMap = {
   moodBoard: SectionState<MoodBoardImage[]>
