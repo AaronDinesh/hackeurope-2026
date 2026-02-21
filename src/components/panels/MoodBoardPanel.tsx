@@ -1,38 +1,81 @@
+import { useState } from 'react'
+import { apiClient } from '../../services/api'
+import { useSectionLoader } from '../../hooks/useSectionLoader'
+import { useToastStore } from '../../stores/toast'
 import { useContentStore } from '../../stores/content'
+import { PromptDialog } from '../modals/PromptDialog'
 
 export function MoodBoardPanel() {
-  const moodBoard = useContentStore((state) => state.moodBoard)
-
-  if (moodBoard.isLoading && moodBoard.data.length === 0) {
-    return <Placeholder message="Loading mood board…" />
-  }
-
-  if (moodBoard.error) {
-    return <Placeholder message={moodBoard.error} tone="error" />
-  }
-
-  if (!moodBoard.data.length) {
-    return <Placeholder message="No mood board images yet." />
-  }
+  const { state: moodBoard, reload } = useSectionLoader('moodBoard', apiClient.fetchMoodBoard)
+  const setSectionData = useContentStore((state) => state.setSectionData)
+  const addToast = useToastStore((state) => state.addToast)
+  const [regenerateOpen, setRegenerateOpen] = useState(false)
 
   return (
-    <div className="grid grid-cols-2 gap-4 p-6 lg:grid-cols-3">
-      {moodBoard.data.map((image) => (
-        <figure
-          key={image.id}
-          className="rounded-2xl border border-border/70 bg-muted/40 shadow-sm"
-        >
-          <div className="aspect-square overflow-hidden rounded-t-2xl bg-muted">
-            <img src={image.imageUrl} alt={image.title || 'Mood board'} className="h-full w-full object-cover" />
-          </div>
-          <figcaption className="p-3 text-sm">
-            <p className="font-semibold text-foreground">{image.title ?? 'Untitled'}</p>
-            {image.description ? (
-              <p className="text-xs text-muted-foreground">{image.description}</p>
-            ) : null}
-          </figcaption>
-        </figure>
-      ))}
+    <div className="flex h-full flex-col">
+      <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Mood Board</p>
+          {moodBoard.updatedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Updated {new Date(moodBoard.updatedAt).toLocaleTimeString()}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="rounded-full border border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
+            onClick={reload}
+          >
+            Refresh
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
+            onClick={() => setRegenerateOpen(true)}
+          >
+            Regenerate
+          </button>
+        </div>
+      </header>
+      {moodBoard.isLoading && moodBoard.data.length === 0 ? (
+        <Placeholder message="Loading mood board…" />
+      ) : moodBoard.error ? (
+        <Placeholder message={moodBoard.error} tone="error" />
+      ) : moodBoard.data.length ? (
+        <div className="grid flex-1 grid-cols-2 gap-4 p-6 lg:grid-cols-3">
+          {moodBoard.data.map((image) => (
+            <figure key={image.id} className="rounded-2xl border border-border/70 bg-muted/40 shadow-sm">
+              <div className="aspect-square overflow-hidden rounded-t-2xl bg-muted">
+                <img src={image.imageUrl} alt={image.title || 'Mood board'} className="h-full w-full object-cover" />
+              </div>
+              <figcaption className="p-3 text-sm">
+                <p className="font-semibold text-foreground">{image.title ?? 'Untitled'}</p>
+                {image.description ? (
+                  <p className="text-xs text-muted-foreground">{image.description}</p>
+                ) : null}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : (
+        <Placeholder message="No mood board images yet." />
+      )}
+      <PromptDialog
+        title="Regenerate Mood Board"
+        isOpen={regenerateOpen}
+        onClose={() => setRegenerateOpen(false)}
+        onSubmit={async (prompt) => {
+          try {
+            const images = await apiClient.regenerateMoodBoard(prompt)
+            setSectionData('moodBoard', images)
+            addToast({ type: 'success', message: 'Mood board updated' })
+          } catch (error) {
+            addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })
+          }
+        }}
+      />
     </div>
   )
 }

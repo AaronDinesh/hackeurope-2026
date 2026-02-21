@@ -12,7 +12,11 @@ export interface ApiEndpointConfig {
   moodBoard: SectionEndpoint
   storyboard: SectionEndpoint
   hexCodes: SectionEndpoint
-  constraints: SectionEndpoint
+  constraints: SectionEndpoint & {
+    create?: string
+    update?: string
+    delete?: string
+  }
   summary: SectionEndpoint
   finalImage: string
   finalVideo: string

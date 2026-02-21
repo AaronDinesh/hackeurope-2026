@@ -126,6 +126,33 @@ export const apiClient = {
     })
   },
 
+  async createConstraint(text: string) {
+    const path = getApiUrl().constraints.create ?? getApiUrl().constraints.regenerate
+    return requestJson<Constraint>(buildUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+  },
+
+  async updateConstraint(id: string, payload: Partial<Constraint>) {
+    const path = getApiUrl().constraints.update ?? getApiUrl().constraints.regenerate
+    return requestJson<Constraint>(buildUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    })
+  },
+
+  async deleteConstraint(id: string) {
+    const path = getApiUrl().constraints.delete ?? getApiUrl().constraints.regenerate
+    return requestJson<{ success: boolean }>(buildUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+  },
+
   async fetchSummary() {
     return requestJson<SummaryDoc>(buildUrl(getApiUrl().summary.fetch))
   },

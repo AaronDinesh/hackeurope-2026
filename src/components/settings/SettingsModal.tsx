@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ApiEndpointConfig } from '../../types'
 import { useAppStore } from '../../stores/app'
+import { TextField } from '../ui/TextField'
 
 interface SettingsModalProps {
   onClose: () => void
@@ -61,6 +62,25 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   onChange={(value) => handleChange(`${section}.regenerate`, value)}
                 />
               </div>
+              {section === 'constraints' ? (
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <Field
+                    label="Create Path"
+                    value={form.constraints.create ?? ''}
+                    onChange={(value) => handleChange('constraints.create', value)}
+                  />
+                  <Field
+                    label="Update Path"
+                    value={form.constraints.update ?? ''}
+                    onChange={(value) => handleChange('constraints.update', value)}
+                  />
+                  <Field
+                    label="Delete Path"
+                    value={form.constraints.delete ?? ''}
+                    onChange={(value) => handleChange('constraints.delete', value)}
+                  />
+                </div>
+              ) : null}
             </div>
           ))}
 
@@ -102,11 +122,7 @@ function Field({ label, value, onChange }: FieldProps) {
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <input
-        className="rounded-xl border border-border bg-background/60 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <TextField value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
 }

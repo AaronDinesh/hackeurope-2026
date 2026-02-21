@@ -35,6 +35,9 @@ interface ContentStore extends SectionMap {
   addFinalOutput: (output: FinalOutput) => void
   replaceFinalOutput: (id: string, updater: Partial<FinalOutput>) => void
   clearContent: () => void
+  addConstraint: (constraint: Constraint) => void
+  updateConstraint: (constraint: Constraint) => void
+  removeConstraint: (id: string) => void
 }
 
 const initialState: SectionMap = {
@@ -77,6 +80,32 @@ export const useContentStore = create<ContentStore>()(
           ),
         })),
       clearContent: () => set({ ...initialState, finalOutputs: [] }),
+      addConstraint: (constraint) =>
+        set((state) => ({
+          constraints: {
+            ...state.constraints,
+            data: [constraint, ...state.constraints.data],
+            updatedAt: Date.now(),
+          },
+        })),
+      updateConstraint: (constraint) =>
+        set((state) => ({
+          constraints: {
+            ...state.constraints,
+            data: state.constraints.data.map((item) =>
+              item.id === constraint.id ? constraint : item,
+            ),
+            updatedAt: Date.now(),
+          },
+        })),
+      removeConstraint: (id) =>
+        set((state) => ({
+          constraints: {
+            ...state.constraints,
+            data: state.constraints.data.filter((item) => item.id !== id),
+            updatedAt: Date.now(),
+          },
+        })),
     }),
     {
       name: 'content-cache',
