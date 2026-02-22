@@ -1,5 +1,6 @@
 import base64
 import binascii
+import mimetypes
 from pathlib import Path
 import uuid
 import httpx
@@ -7,6 +8,7 @@ import httpx
 from backend.app.config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 
 GENERATED_DIR = Path(__file__).resolve().parents[2] / "static" / "generated"
+STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 
 
 def build_moodboard_prompt(user_prompt: str) -> str:
@@ -121,4 +123,73 @@ async def generate_and_store_image(prompt: str, prefix: str, description: str) -
     return {
         "image_url": f"/static/generated/{filename}",
         "description": description,
+    }
+
+
+def static_image_url_to_reference(image_url: str, reference_type: str = "asset") -> dict:
+    """
+    Converts a local static URL (e.g. /static/generated/x.png) to a Veo
+    referenceImages item using inlineData.
+    """
+    if not image_url.startswith("/static/"):
+        raise ValueError(f"Unsupported static image URL: {image_url}")
+
+    rel = image_url[len("/static/") :]
+    image_path = (STATIC_DIR / rel).resolve()
+    static_root = STATIC_DIR.resolve()
+    if static_root not in image_path.parents and image_path != static_root:
+        raise ValueError(f"Image path escapes static dir: {image_url}")
+    if not image_path.exists():
+        raise ValueError(f"Image file not found for URL: {image_url}")
+
+    mime, _ = mimetypes.guess_type(str(image_path))
+    if not mime:
+        mime = "image/png"
+    data = base64.b64encode(image_path.read_bytes()).decode("ascii")
+
+    return {
+        "image": {
+            "inlineData": {
+                "mimeType": mime,
+                "data": data,
+            }
+        },
+        "referenceType": reference_type,
+    }
+
+
+def static_image_url_to_veo_reference(image_url: str, reference_type: str = "asset") -> dict:
+    """
+    Converts a local static URL to Veo predictLongRunning instances[].referenceImages shape:
+    {
+      image: { bytesBase64Encoded: <base64>, mimeType: <mime> },
+      referenceType: "ASSET" | "STYLE"
+    }
+    """
+    if not image_url.startswith("/static/"):
+        raise ValueError(f"Unsupported static image URL: {image_url}")
+
+    rel = image_url[len("/static/") :]
+    image_path = (STATIC_DIR / rel).resolve()
+    static_root = STATIC_DIR.resolve()
+    if static_root not in image_path.parents and image_path != static_root:
+        raise ValueError(f"Image path escapes static dir: {image_url}")
+    if not image_path.exists():
+        raise ValueError(f"Image file not found for URL: {image_url}")
+
+    mime, _ = mimetypes.guess_type(str(image_path))
+    if not mime:
+        mime = "image/png"
+    data = base64.b64encode(image_path.read_bytes()).decode("ascii")
+
+    ref_type = reference_type.upper()
+    if ref_type not in {"ASSET", "STYLE"}:
+        ref_type = "ASSET"
+
+    return {
+        "image": {
+            "bytesBase64Encoded": data,
+            "mimeType": mime,
+        },
+        "referenceType": ref_type,
     }
