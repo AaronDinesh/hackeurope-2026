@@ -6,8 +6,13 @@ dist/
 wheels/
 *.egg-info
 backend/static
+.env
 
 # Virtual environments
 .venv
 uv.lock
 
+
+# secrets
+.env
+backend/.env
