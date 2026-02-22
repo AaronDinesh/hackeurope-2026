@@ -1,14 +1,12 @@
-import { save } from '@tauri-apps/api/dialog'
-import { writeBinaryFile } from '@tauri-apps/api/fs'
-
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
 
 export async function saveBlobFile(blob: Blob, suggestedName: string) {
   if (isTauri) {
-    const filePath = await save({ defaultPath: suggestedName })
+    const tauriApi = (window as any).__TAURI__
+    const filePath = await tauriApi.dialog.save({ defaultPath: suggestedName })
     if (!filePath) return
     const buffer = await blob.arrayBuffer()
-    await writeBinaryFile(filePath, new Uint8Array(buffer))
+    await tauriApi.fs.writeBinaryFile(filePath, new Uint8Array(buffer))
     return
   }
 

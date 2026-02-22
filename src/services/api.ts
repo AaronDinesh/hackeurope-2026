@@ -63,21 +63,6 @@ export const apiClient = {
     return null
   },
 
-  async sendVoiceRecording(audio: Blob) {
-    const endpoint = buildUrl(getApiUrl().voiceInput)
-    const formData = new FormData()
-    formData.append('audio', audio, 'recording.webm')
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: formData,
-    })
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unable to upload audio')
-      throw new Error(errorText)
-    }
-    return response.json()
-  },
-
   async fetchMoodBoard() {
     return requestJson<MoodBoardImage[]>(buildUrl(getApiUrl().moodBoard.fetch))
   },

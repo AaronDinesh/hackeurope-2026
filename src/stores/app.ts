@@ -14,7 +14,6 @@ export const defaultAppConfig: AppConfigState = {
   api: {
     baseUrl: 'http://localhost:8000',
     textInput: '/input',
-    voiceInput: '/voice_input',
     moodBoard: { fetch: '/mood-board', regenerate: '/mood-board-generate' },
     storyboard: { fetch: '/story-board', regenerate: '/story-board-generate' },
     hexCodes: { fetch: '/hex-codes', regenerate: '/hex-codes-generate' },

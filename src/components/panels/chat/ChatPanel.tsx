@@ -6,7 +6,6 @@ import { useStreamingResponse } from '../../../hooks/useStreamingResponse'
 import { apiClient } from '../../../services/api'
 import type { TabId } from '../../layout/AppLayout'
 import { MessageList } from './MessageList'
-import { VoiceRecorderButton } from './VoiceRecorderButton'
 import { TextArea } from '../../ui/TextArea'
 
 interface ChatPanelProps {
@@ -18,7 +17,9 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const { messages, addMessage, updateMessage, isLoading, setLoading } = useChatStore()
   const addFinalOutput = useContentStore((state) => state.addFinalOutput)
+  const clearChatHistory = useChatStore((state) => state.clearHistory)
   const setSectionData = useContentStore((state) => state.setSectionData)
+  const clearContent = useContentStore((state) => state.clearContent)
   const addToast = useToastStore((state) => state.addToast)
   const { isStreaming, sendStreamingMessage } = useStreamingResponse()
 
@@ -110,9 +111,22 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
         <MessageList messages={messages} focusTab={focusTab} />
       </div>
       <div className="border-t border-border p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          <VoiceRecorderButton onTranscript={(text) => setInput(text)} disabled={isStreaming} />
+        <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground">
           <span>{isStreaming ? 'Streaming response…' : 'Ready'}</span>
+          <button
+            type="button"
+            className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+            onClick={() => {
+              const confirmClear = window.confirm('Start new conversation and clear all context?')
+              if (!confirmClear) return
+              clearChatHistory()
+              clearContent()
+              addToast({ type: 'info', message: 'Workspace reset. Start a new conversation!' })
+              setInput('')
+            }}
+          >
+            New
+          </button>
         </div>
         <div className="flex gap-2">
           <TextArea

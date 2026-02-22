@@ -8,7 +8,6 @@ export interface SectionEndpoint {
 export interface ApiEndpointConfig {
   baseUrl: string
   textInput: string
-  voiceInput: string
   moodBoard: SectionEndpoint
   storyboard: SectionEndpoint
   hexCodes: SectionEndpoint
@@ -109,12 +108,6 @@ export interface AppConfigState {
   api: ApiEndpointConfig
   theme: ThemePreference
   hasCompletedOnboarding: boolean
-}
-
-export interface VoiceRecordingState {
-  isRecording: boolean
-  duration: number
-  audioBlob: Blob | null
 }
 
 export interface SectionState<T> {

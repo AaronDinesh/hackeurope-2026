@@ -4,7 +4,7 @@ This document captures the product requirements and constraints for the Gemini C
 
 ## 1. Core Goals
 - Build a cross-platform desktop UI (Tauri 2.x + React/TypeScript) that dedicates ~70% of the window to Gemini-generated content tabs and ~30% to a chat panel.
-- Allow users to converse via text input (Enter to send) and voice recording, routing requests to configurable FastAPI endpoints.
+- Allow users to converse via text input (Enter to send), routing requests to configurable FastAPI endpoints.
 - Present five Gemini-generated deliverables (mood board, storyboard, hex codes, constraints, summary) plus a final output history, with simple controls to regenerate each element independently.
 - Support final exports (image or video) initiated from the desktop app, with downloads stored locally.
 
@@ -23,7 +23,6 @@ This document captures the product requirements and constraints for the Gemini C
 ### 2.2 Chat + AI Interaction
 - Chat panel on the right: streaming responses, persistent history, status indicators, and message timestamps.
 - Text messages POST to `/input`. Base URL and path must be configurable in settings.
-- Voice recording button records indefinitely; audio is uploaded to `/voice_input`. Returned transcript is inserted into the text field for editing before send.
 - Each chat response can include references to generated sections; users can click a reference to focus that tab.
 - When a user clicks a section (e.g., a storyboard tile), open an inline editor or modal with a text box to request an updated version. Regeneration endpoints must be configurable (e.g., `/story-board-generate`, `/mood-board-generate`, etc.).
 
@@ -45,22 +44,17 @@ This document captures the product requirements and constraints for the Gemini C
 ### 2.5 Settings & Configuration
 - Settings modal contains:
   - API base URL
-  - Individual endpoint overrides for all features (chat, voice, each section fetch/regenerate, final output, download)
+  - Individual endpoint overrides for all features (chat, each section fetch/regenerate, final output, download)
   - Theme preference (light, dark, system)
   - Toggle for optional analytics/telemetry (if needed later)
 - Persist settings, chat history, theme selection, and window state locally (Zustand + Tauri window-state plugin).
 
-### 2.6 Voice Recording Requirements
-- Unlimited duration; show timer and visual indicator while recording.
-- Provide explicit stop button; automatically upload on stop and handle large blobs gracefully.
-- On transcription success, populate chat input but do **not** auto-send.
-
-### 2.7 Error Handling & Network Awareness
+### 2.6 Error Handling & Network Awareness
 - Toast notifications for API failures, rate limits, and download errors, with retry buttons when relevant.
 - Offline banner when `navigator.onLine === false`; disable send/generate buttons while offline.
 - All content sections show inline error cards with “Retry” buttons.
 
-### 2.8 Persistence
+### 2.7 Persistence
 - Store chat history, content data (latest mood/storyboard/etc.), constraints, and final-output history using Zustand `persist`.
 - Support clearing caches from settings.
 - Persist Tauri window bounds via `tauri-plugin-window-state`.
@@ -76,7 +70,7 @@ This document captures the product requirements and constraints for the Gemini C
 - No Miro integration; Gemini context is fully provided by the FastAPI service.
 
 ## 5. Outstanding Work
-- Implement tabbed layout, chat panel, voice recorder, constraint manager, summary view, and final output history per this spec.
+- Implement tabbed layout, chat panel, constraint manager, summary view, and final output history per this spec.
 - Wire every UI action to configurable FastAPI endpoints (fetch, regenerate, generate finals, downloads).
 - Build settings modal, onboarding/welcome screen, offline/toast systems, and theming.
-- Integrate streaming chat responses, voice transcription workflow, and file downloads.
+- Integrate streaming chat responses and file downloads.

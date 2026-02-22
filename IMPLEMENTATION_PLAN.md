@@ -24,10 +24,9 @@ This document now tracks only the outstanding work required to finish the Gemini
 ## 5. Backend Wiring & Error Handling
 1. **API error surface** – map backend error codes/messages to user-friendly toasts and inline section errors. Include retry tokens for transient issues.
 2. **Streaming metadata** – if the backend can send section references in chat responses, populate `Message.metadata.referencedSection` so the “View section” shortcuts work end-to-end.
-3. **Voice transcription** – display success/failure states based on the `/voice_input` response and allow re-uploading if the backend rejects the audio.
 
 ## 6. Testing & QA
-1. **Manual test pass** – run `npm run tauri dev` after the backend is wired up, covering: onboarding, chat + voice, section fetch/regenerate flows, constraint CRUD, final generation + download, offline mode, and theme toggling.
+1. **Manual test pass** – run `npm run tauri dev` after the backend is wired up, covering: onboarding, chat streaming, section fetch/regenerate flows, constraint CRUD, final generation + download, offline mode, and theme toggling.
 2. **Edge cases** – test large file downloads, extremely long prompts, simultaneous regenerations, and backend error scenarios.
 3. **Optional automated tests** – once contracts solidify, add Jest/Vitest tests for stores (content/chat) and key helpers (e.g., `saveBlobFile`).
 
