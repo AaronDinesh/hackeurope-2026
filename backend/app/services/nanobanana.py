@@ -6,6 +6,8 @@ import httpx
 
 from backend.app.config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 
+GENERATED_DIR = Path(__file__).resolve().parents[2] / "static" / "generated"
+
 
 def _extract_image_data_url(resp_json: dict) -> str:
     """
@@ -96,3 +98,16 @@ async def generate_image(prompt: str) -> str:
         resp_json = r.json()
 
     return _extract_image_data_url(resp_json)
+
+
+async def generate_and_store_image(prompt: str, prefix: str, description: str) -> dict:
+    data_url = await generate_image(prompt)
+    filename = decode_and_store_data_url(
+        data_url=data_url,
+        out_dir=GENERATED_DIR,
+        prefix=prefix,
+    )
+    return {
+        "image_url": f"/static/generated/{filename}",
+        "description": description,
+    }

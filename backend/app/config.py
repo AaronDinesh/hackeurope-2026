@@ -10,9 +10,3 @@ GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3-pro-image-preview
 
 if not GEMINI_API_KEY:
     raise RuntimeError("Missing GEMINI_API_KEY. Put it in backend/.env")
-
-NANO_API_KEY = os.getenv("NANO_API_KEY")
-NANO_BASE_URL = os.getenv("NANO_BASE_URL", "https://api.nanobananas.ai")
-
-if not NANO_API_KEY:
-    raise RuntimeError("Missing NANO_API_KEY. Put it in backend/.env")

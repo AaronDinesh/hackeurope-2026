@@ -1,13 +1,10 @@
-from pathlib import Path
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend.app.store import get_plan
-from backend.app.services.nanobanana import decode_and_store_data_url, generate_image
+from backend.app.store import get_plan, update_plan
+from backend.app.services.nanobanana import generate_and_store_image
 
 router = APIRouter()
-GENERATED_DIR = Path(__file__).resolve().parents[2] / "static" / "generated"
 
 class MoodboardIn(BaseModel):
     plan_id: str
@@ -19,22 +16,21 @@ async def moodboard(payload: MoodboardIn):
         raise HTTPException(status_code=404, detail="Unknown plan_id")
 
     prompt = plan["prompt"]
+    cached = plan.get("moodboard")
+    if cached:
+        return {"plan_id": payload.plan_id, "moodboard": cached}
+
     base = f"Create a moodboard from user prompt. Prompt : {prompt}"
 
     try:
-        data_url = await generate_image(base)
-        filename = decode_and_store_data_url(
-            data_url=data_url,
-            out_dir=GENERATED_DIR,
+        moodboard_image = await generate_and_store_image(
+            base,
             prefix=f"moodboard-{payload.plan_id}-m1",
+            description="Moodboard image",
         )
-        items = [{
-            "tile_id": "m1",
-            "image_url": f"/static/generated/{filename}",
-            "caption": "Moodboard tile 1",
-        }]
+        update_plan(payload.plan_id, {"moodboard": moodboard_image})
 
-        return {"plan_id": payload.plan_id, "moodboard": items}
+        return {"plan_id": payload.plan_id, "moodboard": moodboard_image}
 
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
