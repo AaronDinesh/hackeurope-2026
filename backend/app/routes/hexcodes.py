@@ -1,15 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from backend.app.store import get_plan
 
 router = APIRouter()
 
 @router.get("/v1/hexcodes")
 async def hexcodes(plan_id: str):
-    return {
-        "plan_id": plan_id,
-        "palette": {
-            "primary": ["#FF6B6B"],
-            "secondary": ["#1E1E1E"],
-            "accent": ["#00D4FF"],
-            "background": ["#0A0A0A"],
-        },
-    }
+    plan = get_plan(plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="Unknown plan_id")
+    return {"plan_id": plan_id, "palette": plan["bundle"]["palette"]}
