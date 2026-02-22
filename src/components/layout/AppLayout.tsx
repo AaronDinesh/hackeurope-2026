@@ -5,6 +5,7 @@ import { StoryboardPanel } from '../panels/StoryboardPanel'
 import { TextPanel } from '../panels/TextPanel'
 import { FinalOutputPanel } from '../panels/FinalOutputPanel'
 import { ChatPanel } from '../panels/chat/ChatPanel'
+import { SessionSidebar } from '../sidebar/SessionSidebar'
 
 export type TabId = 'mood' | 'storyboard' | 'text' | 'final'
 
@@ -34,6 +35,7 @@ export function AppLayout({ onOpenSettings }: AppLayoutProps) {
 
   return (
     <div className="flex h-full w-full">
+      <SessionSidebar />
       <div className="flex min-w-0 flex-1 flex-col border-r border-border bg-background/95">
         <header className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>

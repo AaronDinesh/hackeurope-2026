@@ -2,7 +2,7 @@ const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
 
 export async function saveBlobFile(blob: Blob, suggestedName: string) {
   if (isTauri) {
-    const tauriApi = (window as any).__TAURI__
+    const tauriApi = getTauriApi()
     const filePath = await tauriApi.dialog.save({ defaultPath: suggestedName })
     if (!filePath) return
     const buffer = await blob.arrayBuffer()

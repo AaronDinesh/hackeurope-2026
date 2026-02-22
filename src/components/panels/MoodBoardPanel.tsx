@@ -4,9 +4,32 @@ import { useSectionLoader } from '../../hooks/useSectionLoader'
 import { useToastStore } from '../../stores/toast'
 import { useContentStore } from '../../stores/content'
 import { PromptDialog } from '../modals/PromptDialog'
+import { useSessionStore } from '../../stores/sessions'
+import { ensureImageAsset } from '../../services/imageStorage'
+import type { MoodBoardImage } from '../../types'
 
 export function MoodBoardPanel() {
-  const { state: moodBoard, reload } = useSectionLoader('moodBoard', apiClient.fetchMoodBoard)
+  const sessionId = useSessionStore((state) => state.activeSessionId)
+  const mapImages = async (items: MoodBoardImage[]) => {
+    if (!sessionId) return items
+    return Promise.all(
+      items.map(async (image) => {
+        const { imagePath, imageUrl } = await ensureImageAsset({
+          sessionId,
+          category: 'mood-board',
+          itemId: image.id,
+          imagePath: image.imagePath,
+          imageUrl: image.imageUrl,
+        })
+        return { ...image, imagePath, imageUrl: imageUrl || image.imageUrl }
+      }),
+    )
+  }
+
+  const { state: moodBoard, reload } = useSectionLoader('moodBoard', async () => {
+    const data = await apiClient.fetchMoodBoard()
+    return mapImages(data)
+  })
   const setSectionData = useContentStore((state) => state.setSectionData)
   const addToast = useToastStore((state) => state.addToast)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
@@ -80,7 +103,8 @@ export function MoodBoardPanel() {
         onSubmit={async (prompt) => {
           try {
             const images = await apiClient.regenerateMoodBoard(prompt, selectedImageId ?? undefined)
-            setSectionData('moodBoard', images)
+            const processed = await mapImages(images)
+            setSectionData('moodBoard', processed)
             addToast({ type: 'success', message: 'Mood board updated' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })

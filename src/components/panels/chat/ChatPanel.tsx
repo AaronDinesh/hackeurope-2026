@@ -7,6 +7,8 @@ import { apiClient } from '../../../services/api'
 import type { TabId } from '../../layout/AppLayout'
 import { MessageList } from './MessageList'
 import { TextArea } from '../../ui/TextArea'
+import { useSessionStore } from '../../../stores/sessions'
+import { ensureImageAsset } from '../../../services/imageStorage'
 
 interface ChatPanelProps {
   focusTab: (tab: TabId) => void
@@ -17,11 +19,31 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const { messages, addMessage, updateMessage, isLoading, setLoading } = useChatStore()
   const addFinalOutput = useContentStore((state) => state.addFinalOutput)
-  const clearChatHistory = useChatStore((state) => state.clearHistory)
   const setSectionData = useContentStore((state) => state.setSectionData)
-  const clearContent = useContentStore((state) => state.clearContent)
+  const getContentSnapshot = useContentStore((state) => state.getSnapshot)
+  const createSession = useSessionStore((state) => state.createSession)
+  const activeSessionId = useSessionStore((state) => state.activeSessionId)
   const addToast = useToastStore((state) => state.addToast)
   const { isStreaming, sendStreamingMessage } = useStreamingResponse()
+
+  const mapImageAssets = async <T extends { id: string; imageUrl: string; imagePath?: string }>(
+    category: 'mood-board' | 'storyboard',
+    items: T[],
+  ): Promise<T[]> => {
+    if (!activeSessionId) return items
+    return Promise.all(
+      items.map(async (item) => {
+        const { imagePath, imageUrl } = await ensureImageAsset({
+          sessionId: activeSessionId,
+          category,
+          itemId: item.id,
+          imagePath: item.imagePath,
+          imageUrl: item.imageUrl,
+        })
+        return { ...item, imagePath, imageUrl: imageUrl || item.imageUrl }
+      }),
+    )
+  }
 
   const refreshAllSections = async () => {
     try {
@@ -32,8 +54,12 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
         apiClient.fetchConstraints(),
         apiClient.fetchSummary(),
       ])
-      setSectionData('moodBoard', mood)
-      setSectionData('storyboard', story)
+      const [moodAssets, storyAssets] = await Promise.all([
+        mapImageAssets('mood-board', mood),
+        mapImageAssets('storyboard', story),
+      ])
+      setSectionData('moodBoard', moodAssets)
+      setSectionData('storyboard', storyAssets)
       setSectionData('hexCodes', hex)
       setSectionData('constraints', constraintList)
       setSectionData('summary', summaryDoc)
@@ -46,7 +72,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     const content = input.trim()
     if (!content) return
     setInput('')
-    const userMessage = addMessage({ role: 'user', content })
+    addMessage({ role: 'user', content })
     setLoading(true, 'Thinking')
     const assistantMessage = addMessage({ role: 'assistant', content: '' })
     let buffer = ''
@@ -93,6 +119,27 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
 
   const canSend = !isStreaming && !isLoading
 
+  const handleStartNew = async () => {
+    const snapshot = getContentSnapshot()
+    const hasHistory =
+      messages.length > 0 ||
+      snapshot.finalOutputs.length > 0 ||
+      snapshot.moodBoard.length > 0 ||
+      snapshot.storyboard.length > 0 ||
+      snapshot.hexCodes.length > 0 ||
+      snapshot.constraints.length > 0 ||
+      !!snapshot.summary
+
+    if (hasHistory) {
+      const confirmed = window.confirm('Start new conversation and archive the current session?')
+      if (!confirmed) return
+    }
+
+    await createSession()
+    setInput('')
+    addToast({ type: 'info', message: 'Workspace reset. Start a new conversation!' })
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -116,14 +163,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
           <button
             type="button"
             className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-            onClick={() => {
-              const confirmClear = window.confirm('Start new conversation and clear all context?')
-              if (!confirmClear) return
-              clearChatHistory()
-              clearContent()
-              addToast({ type: 'info', message: 'Workspace reset. Start a new conversation!' })
-              setInput('')
-            }}
+            onClick={handleStartNew}
           >
             New
           </button>

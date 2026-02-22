@@ -22,9 +22,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     setForm((current) => {
       const next: ApiEndpointConfig = JSON.parse(JSON.stringify(current))
       const keys = path.split('.')
-      let node: any = next
+      let node: Record<string, unknown> = next as unknown as Record<string, unknown>
       keys.slice(0, -1).forEach((key) => {
-        node = node[key]
+        node = (node[key] ?? {}) as Record<string, unknown>
       })
       node[keys[keys.length - 1]] = value
       return next

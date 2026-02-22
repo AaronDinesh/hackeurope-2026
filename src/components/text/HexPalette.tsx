@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { SectionState, HexColor } from '../../types'
+import { useContentStore } from '../../stores/content'
+import { useToastStore } from '../../stores/toast'
 
 interface HexPaletteProps {
   state: SectionState<HexColor[]>
@@ -8,6 +11,11 @@ interface HexPaletteProps {
 }
 
 export function HexPalette({ state, onRefresh, onRegenerate }: HexPaletteProps) {
+  const setSectionData = useContentStore((content) => content.setSectionData)
+  const addToast = useToastStore((s) => s.addToast)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draftName, setDraftName] = useState('')
+
   if (state.isLoading && state.data.length === 0) {
     return <CardShell title="Hex Codes">Generating palette…</CardShell>
   }
@@ -29,9 +37,63 @@ export function HexPalette({ state, onRefresh, onRegenerate }: HexPaletteProps) 
               className="h-10 w-10 rounded-lg border border-border"
               style={{ backgroundColor: color.hex }}
             />
-            <div className="text-sm">
-              <p className="font-semibold">{color.name ?? 'Color'}</p>
+            <div className="text-sm flex-1">
+              {editingId === color.id ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    const updated = state.data.map((item) =>
+                      item.id === color.id ? { ...item, name: draftName.trim() || item.name } : item,
+                    )
+                    setSectionData('hexCodes', updated)
+                    setEditingId(null)
+                  }}
+                >
+                  <input
+                    value={draftName}
+                    autoFocus
+                    onChange={(event) => setDraftName(event.target.value)}
+                    className="w-full rounded-full border border-border bg-background px-2 py-1 text-sm"
+                  />
+                </form>
+              ) : (
+                <p className="font-semibold">{color.name ?? 'Color'}</p>
+              )}
               <p className="text-muted-foreground">{color.hex}</p>
+            </div>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(color.hex)
+                    addToast({ type: 'success', message: `Copied ${color.hex}` })
+                  } catch (error) {
+                    addToast({ type: 'error', message: (error as Error).message ?? 'Copy failed' })
+                  }
+                }}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(color.id)
+                  setDraftName(color.name ?? '')
+                }}
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                className="text-danger"
+                onClick={() => {
+                  const updated = state.data.filter((item) => item.id !== color.id)
+                  setSectionData('hexCodes', updated)
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}

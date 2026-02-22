@@ -40,6 +40,7 @@ export interface Message {
 export interface MoodBoardImage {
   id: string
   imageUrl: string
+  imagePath?: string
   title?: string
   description?: string
   promptSnippet?: string
@@ -48,6 +49,7 @@ export interface MoodBoardImage {
 export interface StoryboardScene {
   id: string
   imageUrl: string
+  imagePath?: string
   title: string
   description?: string
   order: number
@@ -83,10 +85,38 @@ export interface FinalOutput {
   id: string
   type: FinalOutputType
   previewUrl: string
+  previewPath?: string
   downloadUrl?: string
   createdAt: number
   format: string
   notes?: string
+  savedPath?: string
+  savedAt?: number
+}
+
+export interface ContentSnapshot {
+  moodBoard: MoodBoardImage[]
+  storyboard: StoryboardScene[]
+  hexCodes: HexColor[]
+  constraints: Constraint[]
+  summary: SummaryDoc | null
+  finalOutputs: FinalOutput[]
+}
+
+export interface SessionSnapshot {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messages: Message[]
+  content: ContentSnapshot
+}
+
+export interface SessionListItem {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
 }
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'

@@ -35,7 +35,7 @@ export const defaultAppConfig: AppConfigState = {
 
 export const useAppStore = create<AppStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       config: defaultAppConfig,
       setTheme: (theme) =>
         set((state) => ({

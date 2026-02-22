@@ -4,9 +4,32 @@ import { useSectionLoader } from '../../hooks/useSectionLoader'
 import { useToastStore } from '../../stores/toast'
 import { useContentStore } from '../../stores/content'
 import { PromptDialog } from '../modals/PromptDialog'
+import { useSessionStore } from '../../stores/sessions'
+import { ensureImageAsset } from '../../services/imageStorage'
+import type { StoryboardScene } from '../../types'
 
 export function StoryboardPanel() {
-  const { state: storyboard, reload } = useSectionLoader('storyboard', apiClient.fetchStoryboard)
+  const sessionId = useSessionStore((state) => state.activeSessionId)
+  const mapScenes = async (items: StoryboardScene[]) => {
+    if (!sessionId) return items
+    return Promise.all(
+      items.map(async (scene) => {
+        const { imagePath, imageUrl } = await ensureImageAsset({
+          sessionId,
+          category: 'storyboard',
+          itemId: scene.id,
+          imagePath: scene.imagePath,
+          imageUrl: scene.imageUrl,
+        })
+        return { ...scene, imagePath, imageUrl: imageUrl || scene.imageUrl }
+      }),
+    )
+  }
+
+  const { state: storyboard, reload } = useSectionLoader('storyboard', async () => {
+    const data = await apiClient.fetchStoryboard()
+    return mapScenes(data)
+  })
   const addToast = useToastStore((state) => state.addToast)
   const setSectionData = useContentStore((state) => state.setSectionData)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
@@ -87,7 +110,8 @@ export function StoryboardPanel() {
         onSubmit={async (prompt) => {
           try {
             const scenes = await apiClient.regenerateStoryboard(prompt, selectedSceneId ?? undefined)
-            setSectionData('storyboard', scenes)
+            const processed = await mapScenes(scenes)
+            setSectionData('storyboard', processed)
             addToast({ type: 'success', message: 'Storyboard updated' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })

@@ -25,6 +25,7 @@ export function PromptDialog({
   const [value, setValue] = useState(initialValue)
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(initialValue)
     }
   }, [initialValue, isOpen])
