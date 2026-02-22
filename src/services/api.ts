@@ -1,12 +1,5 @@
 import { getApiUrl } from '../stores/app'
-import type {
-  Constraint,
-  FinalOutput,
-  HexColor,
-  MoodBoardImage,
-  StoryboardScene,
-  SummaryDoc,
-} from '../types'
+import type { Constraint, FinalOutput, HexColor, MoodBoardImage, StoryboardScene, SummaryDoc } from '../types'
 
 const sanitizeBase = (baseUrl: string) => baseUrl.replace(/\/$/, '')
 
@@ -22,6 +15,15 @@ const buildAbsoluteAssetUrl = (pathOrUrl: string) => {
     return pathOrUrl
   }
   return buildUrl(pathOrUrl)
+}
+
+const requestJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unexpected error')
+    throw new Error(errorText || 'Request failed')
+  }
+  return response.json() as Promise<T>
 }
 
 const toHexCodes = (palette: unknown): HexColor[] => {
@@ -41,17 +43,24 @@ const toHexCodes = (palette: unknown): HexColor[] => {
 }
 
 const toConstraints = (negatives: unknown): Constraint[] => {
-  if (!Array.isArray(negatives)) return []
+  let items: string[] = []
+  if (Array.isArray(negatives)) {
+    items = negatives.filter((value): value is string => typeof value === 'string')
+  } else if (typeof negatives === 'string') {
+    items = negatives
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  }
+  if (!items.length) return []
   const now = Date.now()
-  return negatives
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .map((text, idx) => ({
-      id: `constraint-${idx}-${text}`,
-      text,
-      source: 'ai',
-      active: true,
-      createdAt: now,
-    }))
+  return items.map((text, idx) => ({
+    id: `constraint-${idx}-${text}`,
+    text,
+    source: 'ai',
+    active: true,
+    createdAt: now,
+  }))
 }
 
 const toSummary = (summary: unknown): SummaryDoc | null => {
@@ -105,11 +114,6 @@ const toStoryboard = (payload: unknown): StoryboardScene[] => {
   ]
 }
 
-export interface StreamOptions {
-  signal?: AbortSignal
-  onChunk?: (chunk: string) => void
-}
-
 export interface PromptBundle {
   constraints: Constraint[]
   hexCodes: HexColor[]
@@ -118,269 +122,139 @@ export interface PromptBundle {
   storyboard: StoryboardScene[]
 }
 
-const requestJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(url, init)
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unexpected error')
-    throw new Error(errorText || 'Request failed')
-  }
-  return response.json() as Promise<T>
+export interface VeoGenerationResult {
+  output: FinalOutput
+  bundle: PromptBundle
+  localVideoError?: string
+}
+
+export interface FinalImageContextPayload {
+  prompt: string
+  constraints?: string
+  hexcodes?: string
+  summary?: string
+  moodboardUrl?: string
+  storyboardUrl?: string
 }
 
 export const apiClient = {
   async generatePromptBundle(prompt: string): Promise<PromptBundle> {
-    const constraintsPath = '/v1/constraints'
-    const hexcodesPath = '/v1/hexcodes'
-    const summaryPath = '/v1/summary'
-    const moodboardPath = '/v1/moodboard'
-    const storyboardPath = '/v1/storyboard'
-
-    try {
-      const [constraintsResp, hexResp, summaryResp, moodResp, storyResp] = await Promise.all([
-        requestJson<Record<string, unknown>>(buildUrl(constraintsPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        }),
-        requestJson<Record<string, unknown>>(buildUrl(hexcodesPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        }),
-        requestJson<Record<string, unknown>>(buildUrl(summaryPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        }),
-        requestJson<Record<string, unknown>>(buildUrl(moodboardPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        }),
-        requestJson<Record<string, unknown>>(buildUrl(storyboardPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        }),
-      ])
-
-      return {
-        constraints: toConstraints(constraintsResp.negatives),
-        hexCodes: toHexCodes(hexResp.palette),
-        summary: toSummary(summaryResp.summary),
-        moodBoard: toMoodBoard(moodResp.moodboard),
-        storyboard: toStoryboard(storyResp.storyboard),
-      }
-    } catch {
-      const constraintsResp = await requestJson<Record<string, unknown>>(buildUrl(constraintsPath), {
+    const api = getApiUrl()
+    const [constraintsResp, hexResp, summaryResp, moodResp, storyResp] = await Promise.all([
+      requestJson<Record<string, unknown>>(buildUrl(api.constraintsPath), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
-      })
-      const planId = String(constraintsResp.plan_id ?? '')
-      if (!planId) {
-        throw new Error('Backend did not return plan_id')
-      }
-      const [hexResp, summaryResp, moodResp, storyResp] = await Promise.all([
-        requestJson<Record<string, unknown>>(`${buildUrl(hexcodesPath)}?plan_id=${encodeURIComponent(planId)}`),
-        requestJson<Record<string, unknown>>(`${buildUrl(summaryPath)}?plan_id=${encodeURIComponent(planId)}`),
-        requestJson<Record<string, unknown>>(buildUrl(moodboardPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan_id: planId }),
-        }),
-        requestJson<Record<string, unknown>>(buildUrl(storyboardPath), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan_id: planId }),
-        }),
-      ])
+      }),
+      requestJson<Record<string, unknown>>(buildUrl(api.hexCodesPath), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      }),
+      requestJson<Record<string, unknown>>(buildUrl(api.summaryPath), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      }),
+      requestJson<Record<string, unknown>>(buildUrl(api.moodBoardPath), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      }),
+      requestJson<Record<string, unknown>>(buildUrl(api.storyboardPath), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      }),
+    ])
 
-      return {
-        constraints: toConstraints(constraintsResp.negatives),
-        hexCodes: toHexCodes(hexResp.palette),
-        summary: toSummary(summaryResp.summary),
-        moodBoard: toMoodBoard((moodResp.moodboard ?? constraintsResp.moodboard) as unknown),
-        storyboard: toStoryboard((storyResp.storyboard ?? constraintsResp.storyboard) as unknown),
-      }
+    return {
+      constraints: toConstraints(constraintsResp.negatives),
+      hexCodes: toHexCodes(hexResp.hexcodes ?? hexResp.palette),
+      summary: toSummary(summaryResp.summary),
+      moodBoard: toMoodBoard(moodResp.moodboard),
+      storyboard: toStoryboard(storyResp.storyboard),
     }
   },
 
-  async generateVeoVideo(prompt: string) {
-    const response = await requestJson<Record<string, unknown>>(buildUrl('/v1/veo'), {
+  async generateVeoVideo(prompt: string): Promise<VeoGenerationResult> {
+    const { veoPath } = getApiUrl()
+    const response = await requestJson<Record<string, unknown>>(buildUrl(veoPath), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, wait: true, max_wait_sec: 600 }),
     })
-    const videoUrl = String(response.video_url ?? '')
+    const veo = (response.veo ?? {}) as Record<string, unknown>
+    const remoteVideoUrl = String(veo.video_url ?? '')
+    const localVideoUrl = String(veo.local_video_url ?? '')
+    const localVideoError =
+      typeof veo.local_video_error === 'string' && veo.local_video_error.trim().length > 0
+        ? veo.local_video_error
+        : undefined
+    const videoUrl = localVideoUrl || remoteVideoUrl
     if (!videoUrl) {
       throw new Error('Veo response missing video_url')
     }
+    const inputs = (veo.inputs ?? {}) as Record<string, unknown>
     const formatMatch = videoUrl.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/)
+
     return {
-      id: `veo-${Date.now()}`,
-      type: 'video',
-      previewUrl: buildAbsoluteAssetUrl(videoUrl),
-      downloadUrl: buildAbsoluteAssetUrl(videoUrl),
-      createdAt: Date.now(),
-      format: (formatMatch?.[1] ?? 'mp4').toLowerCase(),
-      notes: 'Generated with Veo',
-    } as FinalOutput
-  },
-
-  async sendMessage(payload: { message: string }, options?: StreamOptions) {
-    const endpoint = buildUrl(getApiUrl().textInput)
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      output: {
+        id: `veo-${Date.now()}`,
+        type: 'video',
+        previewUrl: buildAbsoluteAssetUrl(videoUrl),
+        downloadUrl: buildAbsoluteAssetUrl(videoUrl),
+        createdAt: Date.now(),
+        format: (formatMatch?.[1] ?? 'mp4').toLowerCase(),
+        notes: 'Generated with Veo',
       },
-      body: JSON.stringify(payload),
-      signal: options?.signal,
-    })
-
-    if (!response.ok || !response.body) {
-      const errorText = await response.text().catch(() => 'Unexpected error')
-      throw new Error(errorText || 'Unable to contact FastAPI server')
+      bundle: {
+        constraints: toConstraints(inputs.negatives),
+        hexCodes: toHexCodes(inputs.hexcodes),
+        summary: toSummary(inputs.summary),
+        moodBoard: toMoodBoard(inputs.moodboard),
+        storyboard: toStoryboard(inputs.storyboard),
+      },
+      localVideoError,
     }
+  },
 
-    if (!options?.onChunk) {
-      return response.json()
+  async generateFinalImageFromContext(payload: FinalImageContextPayload): Promise<FinalOutput> {
+    const { finalImagePath } = getApiUrl()
+    const response = await requestJson<Record<string, unknown>>(buildUrl(finalImagePath), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: payload.prompt,
+        constraints: payload.constraints,
+        hexcodes: payload.hexcodes,
+        summary: payload.summary,
+        moodboard_url: payload.moodboardUrl,
+        storyboard_url: payload.storyboardUrl,
+      }),
+    })
+
+    const image = (response.final_image ?? {}) as Record<string, unknown>
+    const imageUrl = String(image.image_url ?? '')
+    if (!imageUrl) {
+      throw new Error('Final image response missing image_url')
     }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      if (value) {
-        options.onChunk?.(decoder.decode(value, { stream: true }))
-      }
+    const formatMatch = imageUrl.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/)
+    return {
+      id: `final-image-${Date.now()}`,
+      type: 'image',
+      previewUrl: buildAbsoluteAssetUrl(imageUrl),
+      downloadUrl: buildAbsoluteAssetUrl(imageUrl),
+      createdAt: Date.now(),
+      format: (formatMatch?.[1] ?? 'png').toLowerCase(),
+      notes: String(image.description ?? 'Final generated image'),
     }
-    return null
-  },
-
-  async fetchMoodBoard() {
-    return requestJson<MoodBoardImage[]>(buildUrl(getApiUrl().moodBoard.fetch))
-  },
-
-  async regenerateMoodBoard(prompt: string, targetId?: string) {
-    return requestJson<MoodBoardImage[]>(buildUrl(getApiUrl().moodBoard.regenerate), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, targetId }),
-    })
-  },
-
-  async fetchStoryboard() {
-    return requestJson<StoryboardScene[]>(buildUrl(getApiUrl().storyboard.fetch))
-  },
-
-  async regenerateStoryboard(prompt: string, targetId?: string) {
-    return requestJson<StoryboardScene[]>(buildUrl(getApiUrl().storyboard.regenerate), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, targetId }),
-    })
-  },
-
-  async fetchHexCodes() {
-    return requestJson<HexColor[]>(buildUrl(getApiUrl().hexCodes.fetch))
-  },
-
-  async regenerateHexCodes(prompt: string) {
-    return requestJson<HexColor[]>(buildUrl(getApiUrl().hexCodes.regenerate), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    })
-  },
-
-  async fetchConstraints() {
-    return requestJson<Constraint[]>(buildUrl(getApiUrl().constraints.fetch))
-  },
-
-  async regenerateConstraints(payload: Record<string, unknown>) {
-    return requestJson<Constraint[]>(buildUrl(getApiUrl().constraints.regenerate), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-  },
-
-  async createConstraint(text: string) {
-    const path = getApiUrl().constraints.create ?? getApiUrl().constraints.regenerate
-    return requestJson<Constraint>(buildUrl(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    })
-  },
-
-  async updateConstraint(id: string, payload: Partial<Constraint>) {
-    const path = getApiUrl().constraints.update ?? getApiUrl().constraints.regenerate
-    return requestJson<Constraint>(buildUrl(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...payload }),
-    })
-  },
-
-  async deleteConstraint(id: string) {
-    const path = getApiUrl().constraints.delete ?? getApiUrl().constraints.regenerate
-    return requestJson<{ success: boolean }>(buildUrl(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    })
-  },
-
-  async fetchSummary() {
-    return requestJson<SummaryDoc>(buildUrl(getApiUrl().summary.fetch))
-  },
-
-  async regenerateSummary(prompt: string) {
-    return requestJson<SummaryDoc>(buildUrl(getApiUrl().summary.regenerate), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    })
-  },
-
-  async generateFinalImage(context: Record<string, unknown>) {
-    return requestJson<FinalOutput>(buildUrl(getApiUrl().finalImage), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(context),
-    })
-  },
-
-  async generateFinalVideo(context: Record<string, unknown>) {
-    return requestJson<FinalOutput>(buildUrl(getApiUrl().finalVideo), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(context),
-    })
   },
 
   async downloadFromUrl(url: string) {
     const response = await fetch(buildAbsoluteAssetUrl(url))
     if (!response.ok) {
       throw new Error('Download failed')
-    }
-    return response.blob()
-  },
-
-  async downloadFinalAsset(payload: Record<string, unknown>) {
-    const endpoint = buildUrl(getApiUrl().download)
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Download failed')
-      throw new Error(errorText)
     }
     return response.blob()
   },

@@ -65,7 +65,12 @@ export function FinalOutputPanel() {
                   }
                   addToast({ type: 'success', message: 'Download complete' })
                 } catch (error) {
-                  addToast({ type: 'error', message: (error as Error).message ?? 'Download failed' })
+                  const sourceUrl = output.downloadUrl || output.previewUrl
+                  const message =
+                    sourceUrl?.includes('generativelanguage.googleapis.com')
+                      ? 'Download blocked by Google API permissions. Enable Generative Language API for your key project and retry.'
+                      : (error as Error).message ?? 'Download failed'
+                  addToast({ type: 'error', message })
                 } finally {
                   setDownloadingId(null)
                 }

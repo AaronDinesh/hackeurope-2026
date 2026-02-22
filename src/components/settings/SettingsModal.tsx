@@ -68,56 +68,43 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         <div className="space-y-6">
           <Field label="Base URL" value={form.baseUrl} onChange={(value) => handleChange('baseUrl', value)} />
 
-          {(['moodBoard', 'storyboard', 'hexCodes', 'constraints', 'summary'] as const).map((section) => (
-            <div key={section} className="rounded-2xl border border-border/60 p-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">{section}</p>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <Field
-                  label="Fetch Path"
-                  value={form[section].fetch}
-                  onChange={(value) => handleChange(`${section}.fetch`, value)}
-                />
-                <Field
-                  label="Regenerate Path"
-                  value={form[section].regenerate}
-                  onChange={(value) => handleChange(`${section}.regenerate`, value)}
-                />
-              </div>
-              {section === 'constraints' ? (
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <Field
-                    label="Create Path"
-                    value={form.constraints.create ?? ''}
-                    onChange={(value) => handleChange('constraints.create', value)}
-                  />
-                  <Field
-                    label="Update Path"
-                    value={form.constraints.update ?? ''}
-                    onChange={(value) => handleChange('constraints.update', value)}
-                  />
-                  <Field
-                    label="Delete Path"
-                    value={form.constraints.delete ?? ''}
-                    onChange={(value) => handleChange('constraints.delete', value)}
-                  />
-                </div>
-              ) : null}
-            </div>
-          ))}
-
           <div className="grid gap-3 md:grid-cols-2">
             <Field
-              label="Final Image Endpoint"
-              value={form.finalImage}
-              onChange={(value) => handleChange('finalImage', value)}
+              label="Constraints Path"
+              value={form.constraintsPath}
+              onChange={(value) => handleChange('constraintsPath', value)}
             />
             <Field
-              label="Final Video Endpoint"
-              value={form.finalVideo}
-              onChange={(value) => handleChange('finalVideo', value)}
+              label="Hex Codes Path"
+              value={form.hexCodesPath}
+              onChange={(value) => handleChange('hexCodesPath', value)}
+            />
+            <Field
+              label="Summary Path"
+              value={form.summaryPath}
+              onChange={(value) => handleChange('summaryPath', value)}
+            />
+            <Field
+              label="Mood Board Path"
+              value={form.moodBoardPath}
+              onChange={(value) => handleChange('moodBoardPath', value)}
+            />
+            <Field
+              label="Storyboard Path"
+              value={form.storyboardPath}
+              onChange={(value) => handleChange('storyboardPath', value)}
+            />
+            <Field
+              label="Final Image Path"
+              value={form.finalImagePath}
+              onChange={(value) => handleChange('finalImagePath', value)}
+            />
+            <Field
+              label="Veo Video Path"
+              value={form.veoPath}
+              onChange={(value) => handleChange('veoPath', value)}
             />
           </div>
-          <Field label="Download Endpoint" value={form.download} onChange={(value) => handleChange('download', value)} />
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">

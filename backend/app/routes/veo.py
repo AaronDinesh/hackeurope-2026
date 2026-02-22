@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -11,7 +12,11 @@ from backend.app.services.nanobanana import (
     generate_and_store_image,
     static_image_url_to_veo_reference,
 )
-from backend.app.services.veo import veo_get_operation, veo_start_generation
+from backend.app.services.veo import (
+    veo_get_operation,
+    veo_start_generation,
+    download_and_store_veo_video,
+)
 
 router = APIRouter()
 
@@ -55,15 +60,18 @@ def _build_veo_prompt(
     moodboard: dict,
     storyboard: dict,
 ) -> str:
+    palette_json = json.dumps(hexcodes, indent=2)
+    summary_json = json.dumps(summary, indent=2)
     return (
         "Create a high-quality cinematic video based on the following production package.\n\n"
         f"USER PROMPT:\n{user_prompt}\n\n"
         f"NEGATIVE CONSTRAINTS:\n{negatives}\n\n"
-        f"COLOR PALETTE (HEX):\n{hexcodes}\n\n"
-        f"CREATIVE SUMMARY:\n{summary}\n\n"
+        f"COLOR PALETTE (HEX JSON):\n{palette_json}\n\n"
+        f"CREATIVE SUMMARY (JSON):\n{summary_json}\n\n"
         f"MOODBOARD REFERENCE IMAGE URL:\n{moodboard['image_url']}\n\n"
         f"STORYBOARD REFERENCE IMAGE URL:\n{storyboard['image_url']}\n\n"
-        "Respect the style, pacing, camera language, and tone implied by the references."
+        "Respect the style, pacing, camera language, and tone implied by the references. "
+        "Output a cinematic, coherent, physically plausible shot sequence with stable identity and lighting."
     )
 
 
@@ -128,11 +136,29 @@ async def veo_input(payload: PromptIn):
                 await asyncio.sleep(payload.poll_interval_sec)
                 waited += payload.poll_interval_sec
 
+        remote_video_url = _extract_video_url(latest_operation)
+        local_video_url = None
+        local_video_error = None
+        if remote_video_url and payload.wait and latest_operation.get("done"):
+            try:
+                local_video_url = await download_and_store_veo_video(remote_video_url, prefix="veo")
+            except Exception as download_error:
+                # Keep the remote URL as fallback even if local proxy download fails.
+                local_video_url = None
+                local_video_error = str(download_error)
+
+        if payload.wait and latest_operation.get("done") and remote_video_url and not local_video_url:
+            raise ValueError(
+                f"Veo generated a video URL but backend failed to stage it locally: {local_video_error or 'unknown error'}"
+            )
+
         return {
             "veo": {
                 "prompt": veo_prompt,
                 "operation": latest_operation,
-                "video_url": _extract_video_url(latest_operation),
+                "video_url": remote_video_url,
+                "local_video_url": local_video_url,
+                "local_video_error": local_video_error,
                 "inputs": {
                     "negatives": negatives,
                     "hexcodes": hexcodes,

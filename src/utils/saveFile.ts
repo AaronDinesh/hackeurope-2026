@@ -1,13 +1,27 @@
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
+import { isTauri } from '@tauri-apps/api/core'
+import { invoke } from '@tauri-apps/api/core'
+import { save } from '@tauri-apps/plugin-dialog'
 
-export async function saveBlobFile(blob: Blob, suggestedName: string) {
-  if (isTauri) {
-    const tauriApi = getTauriApi()
-    const filePath = await tauriApi.dialog.save({ defaultPath: suggestedName })
-    if (!filePath) return
+const normalizeSavePath = (path: string) => {
+  if (!path.startsWith('file://')) return path
+  try {
+    return decodeURIComponent(new URL(path).pathname)
+  } catch {
+    return path
+  }
+}
+
+export async function saveBlobFile(blob: Blob, suggestedName: string): Promise<string | undefined> {
+  if (isTauri()) {
+    const filePath = await save({ defaultPath: suggestedName })
+    if (!filePath) return undefined
     const buffer = await blob.arrayBuffer()
-    await tauriApi.fs.writeBinaryFile(filePath, new Uint8Array(buffer))
-    return
+    const normalizedPath = normalizeSavePath(filePath)
+    await invoke('write_binary_file', {
+      path: normalizedPath,
+      data: Array.from(new Uint8Array(buffer)),
+    })
+    return normalizedPath
   }
 
   const url = URL.createObjectURL(blob)
@@ -18,4 +32,5 @@ export async function saveBlobFile(blob: Blob, suggestedName: string) {
   anchor.click()
   anchor.remove()
   URL.revokeObjectURL(url)
+  return undefined
 }

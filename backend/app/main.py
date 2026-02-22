@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import (
     GEMINI_API_KEY,
@@ -16,8 +17,24 @@ from backend.app.routes.summary import router as summary_router
 from backend.app.routes.moodboard import router as moodboard_router
 from backend.app.routes.storyboard import router as storyboard_router
 from backend.app.routes.veo import router as veo_router
+from backend.app.routes.final_image import router as final_image_router
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:1420",
+        "http://127.0.0.1:1420",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "tauri://localhost",
+        "https://tauri.localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 static_dir = Path(__file__).resolve().parent.parent / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
@@ -53,3 +70,4 @@ app.include_router(summary_router)
 app.include_router(moodboard_router)
 app.include_router(storyboard_router)
 app.include_router(veo_router)
+app.include_router(final_image_router)

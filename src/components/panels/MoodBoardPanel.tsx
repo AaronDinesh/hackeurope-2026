@@ -65,28 +65,55 @@ export function MoodBoardPanel() {
       ) : moodBoard.error ? (
         <Placeholder message={moodBoard.error} tone="error" />
       ) : moodBoard.data.length ? (
-        <div className="grid flex-1 grid-cols-2 gap-4 p-6 lg:grid-cols-3">
-          {moodBoard.data.map((image) => (
+        moodBoard.data.length === 1 ? (
+          <div className="flex flex-1 p-6">
             <figure
-              key={image.id}
-              className="cursor-pointer rounded-2xl border border-border/70 bg-muted/40 shadow-sm transition hover:-translate-y-1"
+              key={moodBoard.data[0].id}
+              className="flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/70 bg-muted/40 shadow-sm"
               onClick={() => {
-                setSelectedImageId(image.id)
+                setSelectedImageId(moodBoard.data[0].id)
                 setRegenerateOpen(true)
               }}
             >
-              <div className="aspect-square overflow-hidden rounded-t-2xl bg-muted">
-                <img src={image.imageUrl} alt={image.title || 'Mood board'} className="h-full w-full object-cover" />
+              <div className="min-h-0 flex-1 overflow-hidden rounded-t-2xl bg-muted/60">
+                <img
+                  src={moodBoard.data[0].imageUrl}
+                  alt={moodBoard.data[0].title || 'Mood board'}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <figcaption className="p-3 text-sm">
-                <p className="font-semibold text-foreground">{image.title ?? 'Untitled'}</p>
-                {image.description ? (
-                  <p className="text-xs text-muted-foreground">{image.description}</p>
+                <p className="font-semibold text-foreground">{moodBoard.data[0].title ?? 'Untitled'}</p>
+                {moodBoard.data[0].description ? (
+                  <p className="text-xs text-muted-foreground">{moodBoard.data[0].description}</p>
                 ) : null}
               </figcaption>
             </figure>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid flex-1 content-start auto-rows-max grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+            {moodBoard.data.map((image) => (
+              <figure
+                key={image.id}
+                className="h-fit cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-muted/40 shadow-sm transition hover:-translate-y-1"
+                onClick={() => {
+                  setSelectedImageId(image.id)
+                  setRegenerateOpen(true)
+                }}
+              >
+                <div className="h-72 overflow-hidden rounded-t-2xl bg-muted/60">
+                  <img src={image.imageUrl} alt={image.title || 'Mood board'} className="h-full w-full object-contain" />
+                </div>
+                <figcaption className="p-3 text-sm">
+                  <p className="font-semibold text-foreground">{image.title ?? 'Untitled'}</p>
+                  {image.description ? (
+                    <p className="text-xs text-muted-foreground">{image.description}</p>
+                  ) : null}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )
       ) : (
         <Placeholder message="No mood board images yet." />
       )}

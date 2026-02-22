@@ -159,10 +159,10 @@ export const useSessionStore = create<SessionStoreState>()((set, get) => {
 
   const ensureSubscriptions = () => {
     if (!chatUnsubscribe) {
-      chatUnsubscribe = useChatStore.subscribe((state) => state.messages, () => get().schedulePersist())
+      chatUnsubscribe = useChatStore.subscribe(() => get().schedulePersist())
     }
     if (!contentUnsubscribe) {
-      contentUnsubscribe = useContentStore.subscribe((state) => state.version, () => get().schedulePersist())
+      contentUnsubscribe = useContentStore.subscribe(() => get().schedulePersist())
     }
   }
 

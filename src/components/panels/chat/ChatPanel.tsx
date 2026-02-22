@@ -16,14 +16,18 @@ interface ChatPanelProps {
 
 export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
   const [input, setInput] = useState('')
-  const { messages, addMessage, updateMessage, isLoading, setLoading } = useChatStore()
+  const { messages, addMessage, updateMessage, isLoading, currentTask, setLoading } = useChatStore()
   const addFinalOutput = useContentStore((state) => state.addFinalOutput)
   const setSectionData = useContentStore((state) => state.setSectionData)
   const getContentSnapshot = useContentStore((state) => state.getSnapshot)
   const createSession = useSessionStore((state) => state.createSession)
+  const persistSnapshot = useSessionStore((state) => state.persistSnapshot)
   const activeSessionId = useSessionStore((state) => state.activeSessionId)
   const addToast = useToastStore((state) => state.addToast)
   const isStreaming = false
+  const statusText = isLoading ? currentTask ?? 'Working…' : isStreaming ? 'Streaming response…' : 'Ready'
+  const isGeneratingImage = isLoading && (currentTask ?? '').toLowerCase().includes('image')
+  const isGeneratingVideo = isLoading && (currentTask ?? '').toLowerCase().includes('video')
 
   const mapImageAssets = async <T extends { id: string; imageUrl: string; imagePath?: string }>(
     category: 'mood-board' | 'storyboard',
@@ -63,6 +67,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
       setSectionData('moodBoard', moodAssets)
       setSectionData('storyboard', storyAssets)
       updateMessage(assistantMessage.id, { content: 'Generated constraints, palette, summary, mood board, and storyboard.' })
+      await persistSnapshot()
     } catch (error) {
       console.error(error)
       updateMessage(assistantMessage.id, { content: 'Something went wrong. Please try again.' })
@@ -84,12 +89,63 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     }
     try {
       setLoading(true, 'Generating video')
-      const output = await apiClient.generateVeoVideo(latestPrompt)
+      const { output, bundle, localVideoError } = await apiClient.generateVeoVideo(latestPrompt)
+      const [moodAssets, storyAssets] = await Promise.all([
+        mapImageAssets('mood-board', bundle.moodBoard),
+        mapImageAssets('storyboard', bundle.storyboard),
+      ])
+      setSectionData('constraints', bundle.constraints)
+      setSectionData('hexCodes', bundle.hexCodes)
+      setSectionData('summary', bundle.summary)
+      setSectionData('moodBoard', moodAssets)
+      setSectionData('storyboard', storyAssets)
       addFinalOutput(output)
+      if (localVideoError) {
+        addToast({
+          type: 'warning',
+          message:
+            'Video generated, but backend could not proxy-download it for local playback. Check API enablement for your key project.',
+        })
+      }
       addToast({ type: 'success', message: 'Video ready' })
+      await persistSnapshot()
       focusTab('final')
     } catch (error) {
       addToast({ type: 'error', message: (error as Error).message ?? 'Generation failed' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGenerateImage = async () => {
+    if (!latestPrompt) {
+      addToast({ type: 'warning', message: 'Send a prompt before generating image.' })
+      return
+    }
+
+    const snapshot = useContentStore.getState()
+    const constraintsText = snapshot.constraints.data.map((item) => item.text).join(', ')
+    const hexcodesText = snapshot.hexCodes.data.map((item) => item.hex).join(', ')
+    const summaryText = snapshot.summary.data?.content ?? ''
+    const moodboardUrl = snapshot.moodBoard.data[0]?.imageUrl
+    const storyboardUrl = snapshot.storyboard.data[0]?.imageUrl
+
+    try {
+      setLoading(true, 'Generating image')
+      const output = await apiClient.generateFinalImageFromContext({
+        prompt: latestPrompt,
+        constraints: constraintsText,
+        hexcodes: hexcodesText,
+        summary: summaryText,
+        moodboardUrl,
+        storyboardUrl,
+      })
+      addFinalOutput(output)
+      addToast({ type: 'success', message: 'Image ready' })
+      await persistSnapshot()
+      focusTab('final')
+    } catch (error) {
+      addToast({ type: 'error', message: (error as Error).message ?? 'Image generation failed' })
     } finally {
       setLoading(false)
     }
@@ -137,7 +193,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
       </div>
       <div className="border-t border-border p-4">
         <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          <span>{isStreaming ? 'Streaming response…' : 'Ready'}</span>
+          <span>{statusText}</span>
           <button
             type="button"
             className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
@@ -165,10 +221,19 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
           </button>
           <button
             type="button"
-            onClick={handleGenerateVideo}
-            className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground"
+            onClick={handleGenerateImage}
+            disabled={isLoading}
+            className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Generate Video
+            {isGeneratingImage ? 'Generating…' : 'Generate Final Image'}
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerateVideo}
+            disabled={isLoading}
+            className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isGeneratingVideo ? 'Generating…' : 'Generate Final Video'}
           </button>
         </div>
       </div>

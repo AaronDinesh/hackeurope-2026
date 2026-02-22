@@ -108,8 +108,9 @@ export async function ensureImageAsset(options: {
       }
     }
 
-    const imageUrl = await resolveImageSource(imagePath)
-    return { imagePath, imageUrl: imageUrl || options.imageUrl || '' }
+    // Keep rendering from backend URL for reliability in Tauri WebView.
+    // We still persist local imagePath for offline/session restoration work.
+    return { imagePath, imageUrl: options.imageUrl || '' }
   } catch (error) {
     console.warn('Image caching unavailable:', error)
     return {

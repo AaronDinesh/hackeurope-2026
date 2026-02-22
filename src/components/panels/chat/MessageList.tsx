@@ -7,7 +7,9 @@ interface MessageListProps {
   focusTab: (tab: TabId) => void
 }
 
-const SECTION_TAB_MAP: Record<NonNullable<Message['metadata']>['referencedSection'], TabId> = {
+type ReferencedSection = Exclude<NonNullable<Message['metadata']>['referencedSection'], undefined>
+
+const SECTION_TAB_MAP: Record<ReferencedSection, TabId> = {
   mood_board: 'mood',
   storyboard: 'storyboard',
   hex_codes: 'text',

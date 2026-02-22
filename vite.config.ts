@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig(() => ({
-  plugins: [react()],
+  plugins: react(),
   clearScreen: false,
   envPrefix: ['VITE_', 'TAURI_'],
   server: {
@@ -13,7 +13,7 @@ export default defineConfig(() => ({
   },
   build: {
     target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome128' : 'safari17',
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    minify: process.env.TAURI_DEBUG ? false : ('esbuild' as const),
     sourcemap: !!process.env.TAURI_DEBUG,
   },
 }))

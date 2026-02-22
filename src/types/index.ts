@@ -1,25 +1,14 @@
 export type ThemePreference = 'light' | 'dark' | 'system'
 
-export interface SectionEndpoint {
-  fetch: string
-  regenerate: string
-}
-
 export interface ApiEndpointConfig {
   baseUrl: string
-  textInput: string
-  moodBoard: SectionEndpoint
-  storyboard: SectionEndpoint
-  hexCodes: SectionEndpoint
-  constraints: SectionEndpoint & {
-    create?: string
-    update?: string
-    delete?: string
-  }
-  summary: SectionEndpoint
-  finalImage: string
-  finalVideo: string
-  download: string
+  constraintsPath: string
+  hexCodesPath: string
+  summaryPath: string
+  moodBoardPath: string
+  storyboardPath: string
+  finalImagePath: string
+  veoPath: string
 }
 
 export type MessageRole = 'user' | 'assistant' | 'system'
