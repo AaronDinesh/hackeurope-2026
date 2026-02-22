@@ -51,7 +51,11 @@ export function FinalOutputPanel() {
               onClick={async () => {
                 try {
                   setDownloadingId(output.id)
-                  const blob = await apiClient.downloadFinalAsset({ id: output.id })
+                  const sourceUrl = output.downloadUrl || output.previewUrl
+                  if (!sourceUrl) {
+                    throw new Error('No download URL available')
+                  }
+                  const blob = await apiClient.downloadFromUrl(sourceUrl)
                   const savedPath = await saveBlobFile(
                     blob,
                     `${output.type === 'image' ? 'final-image' : 'final-video'}-${output.id}.${output.format ?? 'bin'}`,

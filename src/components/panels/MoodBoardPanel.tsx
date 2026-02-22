@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { apiClient } from '../../services/api'
-import { useSectionLoader } from '../../hooks/useSectionLoader'
 import { useToastStore } from '../../stores/toast'
 import { useContentStore } from '../../stores/content'
 import { PromptDialog } from '../modals/PromptDialog'
@@ -26,10 +24,7 @@ export function MoodBoardPanel() {
     )
   }
 
-  const { state: moodBoard, reload } = useSectionLoader('moodBoard', async () => {
-    const data = await apiClient.fetchMoodBoard()
-    return mapImages(data)
-  })
+  const moodBoard = useContentStore((state) => state.moodBoard)
   const setSectionData = useContentStore((state) => state.setSectionData)
   const addToast = useToastStore((state) => state.addToast)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
@@ -50,7 +45,9 @@ export function MoodBoardPanel() {
           <button
             type="button"
             className="rounded-full border border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
-            onClick={reload}
+            onClick={() => {
+              addToast({ type: 'info', message: 'Submit a new prompt to refresh all sections.' })
+            }}
           >
             Refresh
           </button>
@@ -102,10 +99,16 @@ export function MoodBoardPanel() {
         }}
         onSubmit={async (prompt) => {
           try {
-            const images = await apiClient.regenerateMoodBoard(prompt, selectedImageId ?? undefined)
-            const processed = await mapImages(images)
+            const current = moodBoard.data
+            const processed = await mapImages(
+              current.map((image) =>
+                image.id === (selectedImageId ?? image.id)
+                  ? { ...image, promptSnippet: prompt }
+                  : image,
+              ),
+            )
             setSectionData('moodBoard', processed)
-            addToast({ type: 'success', message: 'Mood board updated' })
+            addToast({ type: 'success', message: 'Mood board note updated locally' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })
           } finally {

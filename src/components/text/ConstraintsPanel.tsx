@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { Constraint, SectionState } from '../../types'
 import { clsx } from 'clsx'
 import { useContentStore } from '../../stores/content'
-import { apiClient } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { PromptDialog } from '../modals/PromptDialog'
 
@@ -12,9 +11,6 @@ export interface ConstraintsPanelProps {
 }
 
 export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
-  const addConstraint = useContentStore((s) => s.addConstraint)
-  const updateConstraint = useContentStore((s) => s.updateConstraint)
-  const removeConstraint = useContentStore((s) => s.removeConstraint)
   const setSectionData = useContentStore((s) => s.setSectionData)
   const addToast = useToastStore((s) => s.addToast)
   const [dialog, setDialog] = useState<{ mode: 'create' | 'edit' | 'regenerate'; constraint?: Constraint } | null>(null)
@@ -77,15 +73,13 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
                 <button
                   type="button"
                   className="text-muted-foreground"
-                  onClick={async () => {
+                  onClick={() => {
                     const confirmed = window.confirm('Delete this constraint?')
                     if (!confirmed) return
-                    try {
-                      await apiClient.deleteConstraint(constraint.id)
-                      removeConstraint(constraint.id)
-                    } catch (error) {
-                      addToast({ type: 'error', message: (error as Error).message ?? 'Delete failed' })
-                    }
+                    setSectionData(
+                      'constraints',
+                      state.data.filter((item) => item.id !== constraint.id),
+                    )
                   }}
                 >
                   Delete
@@ -112,16 +106,35 @@ export function ConstraintsPanel({ state, onRefresh }: ConstraintsPanelProps) {
         onSubmit={async (text) => {
           try {
             if (dialog?.mode === 'edit' && dialog.constraint) {
-              const updated = await apiClient.updateConstraint(dialog.constraint.id, { text })
-              updateConstraint(updated)
+              setSectionData(
+                'constraints',
+                state.data.map((item) => (item.id === dialog.constraint?.id ? { ...item, text } : item)),
+              )
               addToast({ type: 'success', message: 'Constraint updated' })
             } else if (dialog?.mode === 'regenerate') {
-              const regenerated = await apiClient.regenerateConstraints({ prompt: text })
+              const regenerated = [
+                ...state.data,
+                {
+                  id: `constraint-${Date.now()}`,
+                  text,
+                  source: 'ai' as const,
+                  active: true,
+                  createdAt: Date.now(),
+                },
+              ]
               setSectionData('constraints', regenerated)
-              addToast({ type: 'success', message: 'Constraints regenerated' })
+              addToast({ type: 'success', message: 'Constraint suggestion added locally' })
             } else {
-              const created = await apiClient.createConstraint(text)
-              addConstraint(created)
+              setSectionData('constraints', [
+                {
+                  id: `constraint-${Date.now()}`,
+                  text,
+                  source: 'user',
+                  active: true,
+                  createdAt: Date.now(),
+                },
+                ...state.data,
+              ])
               addToast({ type: 'success', message: 'Constraint added' })
             }
           } catch (error) {

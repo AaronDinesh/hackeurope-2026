@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { apiClient } from '../../services/api'
-import { useSectionLoader } from '../../hooks/useSectionLoader'
 import { useToastStore } from '../../stores/toast'
 import { useContentStore } from '../../stores/content'
 import { PromptDialog } from '../modals/PromptDialog'
@@ -26,10 +24,7 @@ export function StoryboardPanel() {
     )
   }
 
-  const { state: storyboard, reload } = useSectionLoader('storyboard', async () => {
-    const data = await apiClient.fetchStoryboard()
-    return mapScenes(data)
-  })
+  const storyboard = useContentStore((state) => state.storyboard)
   const addToast = useToastStore((state) => state.addToast)
   const setSectionData = useContentStore((state) => state.setSectionData)
   const [regenerateOpen, setRegenerateOpen] = useState(false)
@@ -50,7 +45,9 @@ export function StoryboardPanel() {
           <button
             type="button"
             className="rounded-full border border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
-            onClick={reload}
+            onClick={() => {
+              addToast({ type: 'info', message: 'Submit a new prompt to refresh all sections.' })
+            }}
           >
             Refresh
           </button>
@@ -109,10 +106,16 @@ export function StoryboardPanel() {
         }}
         onSubmit={async (prompt) => {
           try {
-            const scenes = await apiClient.regenerateStoryboard(prompt, selectedSceneId ?? undefined)
-            const processed = await mapScenes(scenes)
+            const current = storyboard.data
+            const processed = await mapScenes(
+              current.map((scene) =>
+                scene.id === (selectedSceneId ?? scene.id)
+                  ? { ...scene, description: prompt }
+                  : scene,
+              ),
+            )
             setSectionData('storyboard', processed)
-            addToast({ type: 'success', message: 'Storyboard updated' })
+            addToast({ type: 'success', message: 'Storyboard note updated locally' })
           } catch (error) {
             addToast({ type: 'error', message: (error as Error).message ?? 'Failed to regenerate' })
           } finally {

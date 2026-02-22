@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useChatStore } from '../../../stores/chat'
 import { useContentStore } from '../../../stores/content'
 import { useToastStore } from '../../../stores/toast'
-import { useStreamingResponse } from '../../../hooks/useStreamingResponse'
 import { apiClient } from '../../../services/api'
 import type { TabId } from '../../layout/AppLayout'
 import { MessageList } from './MessageList'
@@ -24,7 +23,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
   const createSession = useSessionStore((state) => state.createSession)
   const activeSessionId = useSessionStore((state) => state.activeSessionId)
   const addToast = useToastStore((state) => state.addToast)
-  const { isStreaming, sendStreamingMessage } = useStreamingResponse()
+  const isStreaming = false
 
   const mapImageAssets = async <T extends { id: string; imageUrl: string; imagePath?: string }>(
     category: 'mood-board' | 'storyboard',
@@ -45,29 +44,6 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     )
   }
 
-  const refreshAllSections = async () => {
-    try {
-      const [mood, story, hex, constraintList, summaryDoc] = await Promise.all([
-        apiClient.fetchMoodBoard(),
-        apiClient.fetchStoryboard(),
-        apiClient.fetchHexCodes(),
-        apiClient.fetchConstraints(),
-        apiClient.fetchSummary(),
-      ])
-      const [moodAssets, storyAssets] = await Promise.all([
-        mapImageAssets('mood-board', mood),
-        mapImageAssets('storyboard', story),
-      ])
-      setSectionData('moodBoard', moodAssets)
-      setSectionData('storyboard', storyAssets)
-      setSectionData('hexCodes', hex)
-      setSectionData('constraints', constraintList)
-      setSectionData('summary', summaryDoc)
-    } catch (error) {
-      addToast({ type: 'error', message: (error as Error).message ?? 'Failed to refresh sections' })
-    }
-  }
-
   const handleSend = async () => {
     const content = input.trim()
     if (!content) return
@@ -75,13 +51,18 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     addMessage({ role: 'user', content })
     setLoading(true, 'Thinking')
     const assistantMessage = addMessage({ role: 'assistant', content: '' })
-    let buffer = ''
     try {
-      await sendStreamingMessage(content, (chunk) => {
-        buffer += chunk
-        updateMessage(assistantMessage.id, { content: buffer })
-      })
-      await refreshAllSections()
+      const bundle = await apiClient.generatePromptBundle(content)
+      const [moodAssets, storyAssets] = await Promise.all([
+        mapImageAssets('mood-board', bundle.moodBoard),
+        mapImageAssets('storyboard', bundle.storyboard),
+      ])
+      setSectionData('constraints', bundle.constraints)
+      setSectionData('hexCodes', bundle.hexCodes)
+      setSectionData('summary', bundle.summary)
+      setSectionData('moodBoard', moodAssets)
+      setSectionData('storyboard', storyAssets)
+      updateMessage(assistantMessage.id, { content: 'Generated constraints, palette, summary, mood board, and storyboard.' })
     } catch (error) {
       console.error(error)
       updateMessage(assistantMessage.id, { content: 'Something went wrong. Please try again.' })
@@ -91,24 +72,21 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     }
   }
 
-  const handleGenerate = async (type: 'image' | 'video') => {
-    const snapshot = useContentStore.getState()
-    const context = {
-      moodBoard: snapshot.moodBoard.data,
-      storyboard: snapshot.storyboard.data,
-      hexCodes: snapshot.hexCodes.data,
-      constraints: snapshot.constraints.data,
-      summary: snapshot.summary.data,
+  const latestPrompt = useMemo(
+    () => [...messages].reverse().find((message) => message.role === 'user')?.content.trim() ?? '',
+    [messages],
+  )
+
+  const handleGenerateVideo = async () => {
+    if (!latestPrompt) {
+      addToast({ type: 'warning', message: 'Send a prompt before generating video.' })
+      return
     }
     try {
-      setLoading(true, `Generating final ${type}`)
-      const output =
-        type === 'image'
-          ? await apiClient.generateFinalImage(context)
-          : await apiClient.generateFinalVideo(context)
+      setLoading(true, 'Generating video')
+      const output = await apiClient.generateVeoVideo(latestPrompt)
       addFinalOutput(output)
-      await refreshAllSections()
-      addToast({ type: 'success', message: `Final ${type} ready` })
+      addToast({ type: 'success', message: 'Video ready' })
       focusTab('final')
     } catch (error) {
       addToast({ type: 'error', message: (error as Error).message ?? 'Generation failed' })
@@ -117,7 +95,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
     }
   }
 
-  const canSend = !isStreaming && !isLoading
+  const canSend = !isLoading
 
   const handleStartNew = async () => {
     const snapshot = getContentSnapshot()
@@ -187,14 +165,7 @@ export function ChatPanel({ focusTab, onOpenSettings }: ChatPanelProps) {
           </button>
           <button
             type="button"
-            onClick={() => handleGenerate('image')}
-            className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground"
-          >
-            Generate Image
-          </button>
-          <button
-            type="button"
-            onClick={() => handleGenerate('video')}
+            onClick={handleGenerateVideo}
             className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground"
           >
             Generate Video
