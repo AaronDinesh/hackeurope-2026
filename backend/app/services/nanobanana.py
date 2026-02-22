@@ -9,6 +9,17 @@ from backend.app.config import GEMINI_API_KEY, GEMINI_IMAGE_MODEL
 GENERATED_DIR = Path(__file__).resolve().parents[2] / "static" / "generated"
 
 
+def build_moodboard_prompt(user_prompt: str) -> str:
+    return f"Create a moodboard from user prompt. Prompt : {user_prompt}"
+
+
+def build_storyboard_prompt(user_prompt: str) -> str:
+    return (
+        "Create a board with different frames like they are cut scenes of a short video "
+        f"from user prompt. Prompt : {user_prompt}"
+    )
+
+
 def _extract_image_data_url(resp_json: dict) -> str:
     """
     Extracts the first image returned by Gemini as a data URL:
